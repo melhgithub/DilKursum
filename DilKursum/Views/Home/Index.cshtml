@@ -1,0 +1,28 @@
+﻿@using EntityLayer.Concrete
+@using System.Text
+@using System.Net
+@using Microsoft.AspNetCore.Html
+@using System.Security.Claims;
+@model AnasayfaViewModel
+@{
+    ViewData["Title"] = "Anasayfa";
+}
+
+
+
+
+@foreach (var anasayfa in Model.Anasayfa)
+{
+    <div class="containerr">
+        <div class="row">
+
+            <div class="col-md-12 anasayfailkyazi" style="margin-top:20px;">
+                <h2 class="HomePageTitle text-center">@anasayfa.Baslik</h2>
+                <h4 class="HomePageText word-wrap" style="word-wrap: break-word;">@Html.Raw(@anasayfa.İlkyazi)</h4>
+            </div>
+        </div>
+    </div>
+
+}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+

@@ -1,0 +1,412 @@
+﻿@using EntityLayer.Concrete
+@using DilKursum.DataTransferObjects
+@using System.ComponentModel
+@using Newtonsoft.Json
+@model DilModel
+@{
+    ViewData["Title"] = "Diller - Yönetim";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+@await Html.PartialAsync("_ScriptImports")
+<style>
+    .modal.fade .modal-dialog {
+        transform: translate(0, -25%);
+        opacity: 0;
+        transition: all 0.3s ease-out;
+    }
+
+    .modal.show .modal-dialog {
+        transform: translate(0, 0);
+        opacity: 1;
+    }
+
+</style>
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i class="fas fa-cubes"></i>
+            Diller
+        </h3>
+    </div>
+
+    <div class="card-body">
+        <button id="yeniDilButton" class="btn btn-primary w-100">Yeni Dil</button>
+        <br />
+
+        <form id="filterForm">
+            <div class="row">
+                <div class="form-group col-md-6">
+                    <label for="DilAdi">Dil Adı:</label>
+                    <input type="text" id="DilAdi" name="DilAdi" class="form-control" />
+                </div>
+
+                <div class="form-group col-md-6">
+                    <label for="Durum">Durum:</label>
+                    <select id="Durum" name="Durum" class="form-control">
+                        <option value="">Tümü</option>
+                        <option value="1">AKTİF</option>
+                        <option value="2">KALDIRILDI</option>
+                    </select>
+                </div>
+
+                <button type="button" class="btn btn-primary col-md-12 w-100" id="filterBtn">Filtrele</button>
+            </div>
+        </form>
+
+        <div id="dilTable" class="table-responsive">
+            <table id="dilGrid" class="table table-bordered table-striped"></table>
+            <div id="dilGridPager"></div>
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<div class="modal fade" id="dilModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+
+            </div>
+            <div class="modal-body">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="successModal" tabindex="-1" role="dialog" aria-labelledby="successModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="successModalLabel">Sonuç</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+
+            </div>
+            <div class="modal-body text-center" id="successMessage">
+                <p>İşleminiz başarılı bir şekilde tamamlandı!</p>
+                <i class="fas fa-check-circle" style="font-size: 50px; color: green;"></i>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+    $(document).ready(function () {
+        filterDil();
+
+
+        $(document).on('submit', 'form:not(#filterForm)', function (e) {
+            e.preventDefault();
+            var form = $(this);
+            $.ajax({
+                url: form.attr('action'),
+                type: form.attr('method'),
+                data: form.serialize(),
+                success: function (response) {
+                    if (response.success) {
+                        showSuccessMessage(response.message);
+                        filterDil();
+                    } else {
+                        alert("Başarısız");
+                    }
+                },
+                error: function (error) {
+                    alert("Başarısız");
+                }
+            });
+        });
+
+        $(document).on('click', '.open-delete-modal', function () {
+            openDeleteDilModal(this);
+        });
+
+        $(document).on('click', '.open-remove-modal', function () {
+            openRemoveDilModal(this);
+        });
+
+        $(document).on('click', '.open-approve-modal', function () {
+            openApproveDilModal(this);
+        });
+
+        $(document).on('click', '.open-edit-modal', function () {
+            openEditDilModal(this);
+        });
+
+        $(document).on('click', '#yeniDilButton', function () {
+            console.log("Creating yeni dil modal...");
+            openYeniDilModal();
+        });
+    });
+
+    $('#filterForm').on('keypress', function (e) {
+        if (e.which === 13) {
+            e.preventDefault();
+            $('#filterBtn').click();
+        }
+    });
+
+    $(document).ready(function () {
+        $('#filterBtn').on('click', function () {
+            var formData = {
+                DilAdi: $('#DilAdi').val(),
+                Durum: $('#Durum').val(),
+            };
+
+            $.ajax({
+                url: '@Url.Action("FilterDil", "DilEdit")',
+                type: 'POST',
+                data: formData,
+                success: function (data) {
+                    showDatas(data);
+                },
+                error: function () {
+                    alert('Bir hata oluştu. Lütfen tekrar deneyin.');
+                }
+            });
+        });
+    });
+
+
+    function showSuccessMessage(message) {
+        $('#successMessage').text(message);
+        $('#successModal').modal({
+            backdrop: 'static',
+            keyboard: false
+        });
+        $('#successModal').modal('show');
+
+        setTimeout(function () {
+            $('#successModal').modal('hide');
+            $('#dilModal').modal('hide');
+        }, 1000);
+    }
+
+
+
+    function showDatas(data) {
+        var dilGrid = $('#dilGrid');
+
+        if (dilGrid.length) {
+            dilGrid.jqGrid('GridUnload');
+
+            dilGrid.jqGrid({
+                data: data,
+                colModel: [
+                    { name: 'id', label: 'ID', width: 40, align: 'center' },
+                    { name: 'diladi', label: 'Dil Adı', width: 200, align: 'center' },
+                    {
+                        name: 'durum',
+                        label: 'Durum',
+                        width: 200,
+                        align: 'center',
+                        formatter: function (cellValue) {
+                            switch (cellValue) {
+                                case 1:
+                                    return '<span style="color: green;">AKTİF</span>';
+                                case 2:
+                                    return '<span style="color: red;">KALDIRILDI</span>';
+                                default:
+                                    return '';
+                            }
+                        }
+                    },
+                    {
+                        name: 'actions',
+                        label: 'İşlemler',
+                        width: 400,
+                        align: 'center',
+                        formatter: function (cellValue, options, rowObject) {
+                            var buttons = '<button class="btn btn-primary open-edit-modal" style="margin:0px 10px 0px 10px;" ' +
+                                'data-dilid="' + rowObject.id + '" ' +
+                                'data-diladi="' + rowObject.diladi + '" ' +
+                                'data-dildurum="' + rowObject.durum + '">Düzenle</button>' +
+                                '<button class="btn btn-success open-approve-modal" style="margin:0px 10px 0px 10px;" ' +
+                                'data-dilid="' + rowObject.id + '" ' +
+                                'data-dildurum="' + rowObject.durum + '">Onayla</button>' +
+                                '<button class="btn btn-warning open-remove-modal" style="margin:0px 10px 0px 10px;" ' +
+                                'data-dilid="' + rowObject.id + '" ' +
+                                'data-dildurum="' + rowObject.durum + '">Kaldır</button>' +
+                                '<button class="btn btn-warning open-delete-modal" style="margin:0px 10px 0px 10px;" ' +
+                                'data-dilid="' + rowObject.id + '" ' +
+                                'data-dildurum="' + rowObject.durum + '">Sil</button>';
+                            return buttons;
+                        }
+                    }
+                ],
+
+                pager: '#dilGridPager',
+                rowNum: 10,
+                rowList: [10, 20, 30, 40, 50],
+                sortname: 'id',
+                viewrecords: true,
+                autoheight: true,
+                autoWidth: true,
+                responsive: true
+            });
+        }
+    }
+
+    function filterDil() {
+        var dilGrid = $('#dilGrid');
+
+        $.ajax({
+            url: '@Url.Action("Filter", "DilEdit")',
+            type: 'POST',
+            dataType: 'json',
+            success: function (response) {
+                var data = response;
+                console.log(data);
+                showDatas(data);
+            },
+            error: function (error) {
+                console.log("Hata:", error);
+            }
+        });
+    }
+
+    function openApproveDilModal(button) {
+        var data = button.dataset;
+
+        var formContent = `
+                            <form method="post" action="@Url.Action("ApproveDil", "DilEdit")">
+                            <div class="form-group">
+                                <label>Onaylamak istiyor musunuz ?</label>
+                            </div>
+
+                            <div class="form-group">
+                                <input type="text" id="ID" name="ID" class="form-control" value="${data.dilid}" required hidden/>
+                            </div>
+
+                            <div class="form-group">
+                            <input type="submit" value="Onayla" class="btn btn-warning w-100" />
+                            </div>
+                            </form>
+                             `;
+
+        $('#modalTitle').text('Dil Onayla');
+        $('.modal-body').html(formContent);
+        $('#dilModal').modal('show');
+    }
+
+    function openRemoveDilModal(button) {
+        var data = button.dataset;
+
+        var formContent = `
+                        <form method="post" action="@Url.Action("RemoveDil", "DilEdit")">
+                        <div class="form-group">
+                            <label>Kaldırmak istiyor musunuz ?</label>
+                        </div>
+
+                        <div class="form-group">
+                            <input type="text" id="ID" name="ID" class="form-control" value="${data.dilid}" required hidden/>
+                        </div>
+
+                        <div class="form-group">
+                        <input type="submit" value="Kaldır" class="btn btn-warning w-100" />
+                        </div>
+                        </form>
+                         `;
+
+        $('#modalTitle').text('Dil Kaldır');
+        $('.modal-body').html(formContent);
+        $('#dilModal').modal('show');
+    }
+    function openDeleteDilModal(button) {
+        var data = button.dataset;
+
+        var formContent = `
+                        <form method="post" action="@Url.Action("DeleteDil", "DilEdit")">
+                        <div class="form-group">
+                            <label>Silmek istiyor musunuz ?</label>
+                        </div>
+
+                        <div class="form-group">
+                            <input type="text" id="ID" name="ID" class="form-control" value="${data.dilid}" required hidden/>
+                        </div>
+
+                        <div class="form-group">
+                        <input type="submit" value="Kaldır" class="btn btn-warning w-100" />
+                        </div>
+                        </form>
+                         `;
+
+        $('#modalTitle').text('Dil Sil');
+        $('.modal-body').html(formContent);
+        $('#dilModal').modal('show');
+    }
+
+    function openYeniDilModal() {
+        var formContent = `
+                                    <form method="post" action="@Url.Action("AddEditDil", "DilEdit")">
+
+
+                                        <div class="form-group">
+                                            <label for="DilAdi">Dil Adı:</label>
+                                            <input type="text" id="DilAdi" name="DilAdi" class="form-control" required />
+                                        </div>
+
+
+
+                                        <div class="form-group">
+                                            <label for="Durum">Durum :</label>
+                                                <select id="Durum" name="Durum" class="form-control" required>
+                                                <option value="1">AKTİF</option>
+                                                <option value="2">KALDIRILDI</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <input type="submit" value="Oluştur" class="btn btn-primary w-100" />
+                                        </div>
+
+                                    </form>
+                                    `;
+
+        $('#modalTitle').text('Dil Oluştur');
+        $('.modal-body').html(formContent);
+        $('#dilModal').modal('show');
+    }
+
+    function openEditDilModal(button) {
+        var data = button.dataset;
+        var formContent = `
+                    <form method="post" action="@Url.Action("AddEditDil", "DilEdit")">
+                        <div class="form-group">
+                            <input type="text" id="ID" name="ID" class="form-control" value="${data.dilid}" required hidden />
+                        </div>
+                        <div class="form-group">
+                            <label for="DilAdi">Dil Adı:</label>
+                            <input type="text" id="DilAdi" name="DilAdi" class="form-control" value="${data.diladi}" required />
+                        </div>
+
+
+                        <div class="form-group">
+                            <label for="Durum">Durum :</label>
+                                <select id="Durum" name="Durum" class="form-control" data="${data.dildurum}" required>
+                                <option value="1" ${data.dildurum == '1' ? 'selected' : ''}>AKTİF</option>
+                                <option value="2" ${data.dildurum == '2' ? 'selected' : ''}>KALDIRILDI</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <input type="submit" value="Düzenle" class="btn btn-primary w-100" />
+                        </div>
+                    </form>
+                `;
+
+        $('#modalTitle').text('Dil Düzenle');
+        $('.modal-body').html(formContent);
+        $('#dilModal').modal('show');
+    }
+
+
+</script>

@@ -1,0 +1,24 @@
+﻿@using EntityLayer.Concrete
+@using System.Text
+@using System.Net
+@using Microsoft.AspNetCore.Html
+@model HakkimizdaViewModel
+@{
+    ViewData["Title"] = "Hakkımızda";
+}
+
+@foreach (var hakkimizda in Model.Hakkimizda)
+{
+    <div class="containerr">
+        <div class="row">
+
+            <div class="col-md-12 anasayfailkyazi" style="margin-top:20px;">
+                <h2 class="HomePageTitle text-center">@hakkimizda.Baslik</h2>
+                <h4 class="HomePageText word-wrap" style="word-wrap: break-word;">@Html.Raw(@hakkimizda.İlkyazi)</h4>
+            </div>
+        </div>
+    </div>
+
+}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+

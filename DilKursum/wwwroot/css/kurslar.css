@@ -1,0 +1,113 @@
+﻿
+.clickable {
+    cursor: pointer;
+    background-color: #e7f3fe;
+    border-left: 5px solid #2196F3;
+}
+
+    .clickable:hover {
+        background-color: #d4edda;
+    }
+/* Animasyon için başlangıç ve bitiş stilleri */
+.kurs-card {
+    opacity: 0;
+    transform: translateY(30px);
+    animation: fadeInUp 0.5s ease-out forwards;
+}
+#modalVideo, #modalImage {
+    display: block; /* Eğer display: none; varsa bu değeri değiştirebilirsiniz */
+}
+
+/* Her bir kart için animasyon */
+@keyframes fadeInUp {
+    0% {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Hover efekti için stil */
+.kurs-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Card içeriği ve buton stilleri */
+.kurs-card .card-header {
+    background-color: #007bff;
+    color: white;
+    border-bottom: 2px solid #0056b3;
+}
+
+.kurs-card .card-body {
+    background-color: #f9f9f9;
+}
+
+.kurs-card .btn-detay {
+    transition: background-color 0.3s ease;
+}
+
+    .kurs-card .btn-detay:hover {
+        background-color: #28a745;
+    }
+
+
+/* Modern form stil düzenlemeleri */
+form .form-group label {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #495057;
+}
+
+form .form-control {
+    border-radius: 10px;
+    border: 1px solid #ced4da;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+    form .form-control:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 8px rgba(0, 123, 255, 0.25);
+    }
+
+form .btn-primary {
+    border-radius: 10px;
+    padding: 10px;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+}
+
+    form .btn-primary:hover {
+        background-color: #0056b3;
+    }
+
+form .row {
+    margin-bottom: 20px;
+}
+
+form .col-md-4 {
+    margin-bottom: 10px;
+}
+
+form .btn {
+    font-size: 16px;
+    text-transform: uppercase;
+}
+
+/* Responsive düzenlemeler */
+@media (max-width: 768px) {
+    form .col-md-4 {
+        margin-bottom: 15px;
+    }
+
+    form .btn-primary {
+        font-size: 14px;
+    }
+}

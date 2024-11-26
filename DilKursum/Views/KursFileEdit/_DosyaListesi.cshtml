@@ -1,0 +1,37 @@
+﻿@model IEnumerable<EntityLayer.Concrete.KursFile>
+
+
+<div class="row" id="fileList">
+    @foreach (var dosya in Model)
+    {
+        <div class="col-md-4 file-item"
+             data-name="@dosya.Name"
+             data-filename="@dosya.FileName"
+             data-type="@(dosya.IsVideo ? "video" : "image")">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">@dosya.Name</h5>
+                    <p class="card-text">@dosya.FileName</p>
+
+                    @if (dosya.IsVideo)
+                    {
+                        <p>Video Dosyası</p>
+                        <video width="100%" controls>
+                            <source src="@Url.Content("~/uploads/" + dosya.Name)" type="video/@dosya.Name.Substring(dosya.Name.LastIndexOf('.') + 1)" />
+                            Your browser does not support the video tag.
+                        </video>
+                    }
+                    else
+                    {
+                        <p>Resim Dosyası</p>
+                        <img src="@Url.Content("~/uploads/" + dosya.Name)" class="img-fluid" alt="Image" />
+                    }
+
+                    <button type="button" class="btn btn-danger" onclick="confirmDelete(@dosya.ID, @dosya.EgitmenID)">Sil</button>
+
+                    <button type="button" class="btn btn-warning" onclick="openEditModal(@dosya.ID)">Düzenle</button>
+                </div>
+            </div>
+        </div>
+    }
+</div>

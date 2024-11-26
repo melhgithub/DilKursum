@@ -1,0 +1,712 @@
+﻿@using EntityLayer.Concrete
+@using DilKursum.DataTransferObjects
+@using System.ComponentModel
+@using Newtonsoft.Json
+@model KursModel
+@{
+    ViewData["Title"] = "Kurslar - Yönetim";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+@await Html.PartialAsync("_ScriptImports")
+<style>
+    .modal.fade .modal-dialog {
+        transform: translate(0, -25%);
+        opacity: 0;
+        transition: all 0.3s ease-out;
+    }
+
+    .modal.show .modal-dialog {
+        transform: translate(0, 0);
+        opacity: 1;
+    }
+
+</style>
+
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i class="fas fa-cubes"></i>
+            Kurslar
+        </h3>
+    </div>
+    <div class="card-body">
+        <button id="yeniKursButton" class="btn btn-primary w-100">Yeni Kurs</button>
+        <br />
+
+        <form id="filterForm">
+            <div class="row">
+
+                <div class="form-group col-md-4">
+                    <label for="KursAdi">Kurs Adı:</label>
+                    <input type="text" id="KursAdi" name="KursAdi" class="form-control" />
+                </div>
+
+                <div class="form-group col-md-4">
+                    <label for="DersSayisi">Ders Sayısı:</label>
+                    <input type="text" id="DersSayisi" name="DersSayisi" class="form-control" />
+                </div>
+
+                <div class="form-group col-md-4">
+                    <label for="Fiyat">Fiyat:</label>
+                    <input type="text" id="Fiyat" name="Fiyat" class="form-control" oninput="this.value = this.value.replace('.', ',');" />
+                </div>
+
+                <div class="form-group col-md-4">
+                    <label for="Durum">Durum:</label>
+                    <select id="Durum" name="Durum" class="form-control">
+                        <option value="">Tümü</option>
+                        <option value="1">AKTİF</option>
+                        <option value="2">KALDIRILDI</option>
+                    </select>
+                </div>
+
+                <div class="form-group col-md-4">
+                    <label for="DilAdi">Dil:</label>
+                    <select id="DilAdi" name="DilAdi" class="form-control">
+                        <option value="">Tümü</option>
+                        @foreach(var dil in Model.Diller)
+                        {
+                            <option value="@dil.ID">@dil.DilAdi</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group col-md-4">
+                    <label for="EgitmenKullaniciAdi">Eğitmen:</label>
+                    <select id="EgitmenKullaniciAdi" name="EgitmenKullaniciAdi" class="form-control">
+                        <option value="">Tümü</option>
+                        @foreach(var egitmen in Model.Egitmenler)
+                        {
+                            <option value="@egitmen.ID">@egitmen.KullaniciAdi - @egitmen.Isim @egitmen.Soyisim</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group col-md-12">
+                    <label for="KursAciklama">Açıklama:</label>
+                    <input type="text" id="KursAciklama" name="KursAciklama" class="form-control" />
+                </div>
+
+                <button type="button" class="btn btn-primary col-md-12 w-100" id="filterBtn">Filtrele</button>
+            </div>
+        </form>
+
+        <div id="kursTable" class="table-responsive">
+            <table id="kursGrid" class="table table-bordered table-striped"></table>
+            <div id="kursGridPager"></div>
+        </div>
+
+    </div>
+
+</div>
+
+
+<div class="modal fade" id="kursModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+
+
+            </div>
+            <div class="modal-body">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="successModal" tabindex="-1" role="dialog" aria-labelledby="successModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="successModalLabel">Sonuç</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+
+
+            </div>
+            <div class="modal-body text-center" id="successMessage">
+                <p>İşleminiz başarılı bir şekilde tamamlandı!</p>
+                <i class="fas fa-check-circle" style="font-size: 50px; color: green;"></i>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+    
+    $('#filterForm').on('keypress', function (e) {
+        if (e.which === 13) {
+            e.preventDefault();
+            $('#filterBtn').click();
+        }
+    });
+
+    $(document).ready(function () {
+        $('#filterBtn').on('click', function () {
+            var formData = {
+                KursAdi: $('#KursAdi').val(),
+                KursAciklama: $('#KursAciklama').val(),
+                Fiyat: $('#Fiyat').val(),
+                DersSayisi: $('#DersSayisi').val(),
+                DilAdi: $('#DilAdi').val(),
+                EgitmenKullaniciAdi: $('#EgitmenKullaniciAdi').val(),
+                Durum: $('#Durum').val(),
+            };
+
+            $.ajax({
+                url: '@Url.Action("FilterKurs", "KursEdit")',
+                type: 'POST',
+                data: formData,
+                success: function (data) {
+                    showDatas(data);
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error Status:', status);
+                    console.error('Error Details:', error);
+                    console.error('Response:', xhr.responseText);
+                    alert('Bir hata oluştu. Lütfen tekrar deneyin.');
+                }
+            });
+        });
+    });
+
+
+    $(document).ready(function () {
+        filterKurs();
+
+
+
+        $(document).on('submit', 'form:not(#filterForm)', function (e) {
+            e.preventDefault();
+            var form = $(this);
+            $.ajax({
+                url: form.attr('action'),
+                type: form.attr('method'),
+                data: form.serialize(),
+                success: function (response) {
+                    if (response.success) {
+                        showSuccessMessage(response.message);
+                        filterKurs();
+                    } else {
+                        alert("Başarısız");
+                    }
+                },
+                error: function (error) {
+                    alert("Başarısız");
+                }
+            });
+        });
+
+        $(document).on('click', '.open-delete-modal', function () {
+            openDeleteKursModal(this);
+        });
+
+        $(document).on('click', '.open-remove-modal', function () {
+            openRemoveKursModal(this);
+        });
+
+        $(document).on('click', '.open-approve-modal', function () {
+            openApproveKursModal(this);
+        });
+
+        $(document).on('click', '.open-edit-modal', function () {
+            openEditKursModal(this);
+        });
+
+        $(document).on('click', '#yeniKursButton', function () {
+            console.log("Creating yeni kurs modal...");
+            openYeniKursModal();
+        });
+
+        $(document).on('click', '.open-kursdetails-modal', function () {
+            openKursDetailsModal(this);
+        });
+
+        $(document).on('click', '.open-delete-kursdetail-modal', function () {
+            var kursDetailId = $(this).data('kursdetailid');
+            openDeleteKursDetailModal(kursDetailId);
+        });
+
+        $(document).on('click', '.open-remove-kursdetail-modal', function () {
+            var kursDetailId = $(this).data('kursdetailid');
+            openRemoveKursDetailModal(kursDetailId);
+        });
+        
+        $(document).on('click', '.open-approve-kursdetail-modal', function () {
+            var kursDetailId = $(this).data('kursdetailid');
+            openApproveKursDetailModal(kursDetailId);
+        });
+
+
+
+        $(document).on('click', '.open-delete-kurs-modal', function () {
+            var kursId = $(this).data('kursid');
+            openDeleteKursModal(kursId);
+        });
+
+    });
+
+    function openRemoveKursDetailModal(kursDetailId) {
+        var formContent = `
+            <form method="post" action="@Url.Action("RemoveKursDetail", "KursDetailEdit")">
+                <div class="form-group">
+                    <label>Kurs içeriğini kaldırmak istiyor musunuz?</label>
+                </div>
+                <input type="hidden" name="ID" value="${kursDetailId}" />
+                <div class="form-group">
+                    <input type="submit" value="Kaldır" class="btn btn-warning w-100" />
+                </div>
+            </form>
+        `;
+
+        $('#modalTitle').text('Kurs içeriği Kaldır');
+        $('.modal-body').html(formContent);
+        $('#kursModal').modal('show');
+    }
+
+    function openDeleteKursDetailModal(kursDetailId) {
+        var formContent = `
+            <form method="post" action="@Url.Action("DeleteKursDetail", "KursDetailEdit")">
+                <div class="form-group">
+                    <label>Kurs içeriğini silmek istiyor musunuz?</label>
+                </div>
+                <input type="hidden" name="ID" value="${kursDetailId}" />
+                <div class="form-group">
+                    <input type="submit" value="Sil" class="btn btn-warning w-100" />
+                </div>
+            </form>
+        `;
+
+        $('#modalTitle').text('Kurs içeriği sil');
+        $('.modal-body').html(formContent);
+        $('#kursModal').modal('show');
+    }
+    
+    function openApproveKursDetailModal(kursDetailId) {
+        var formContent = `
+            <form method="post" action="@Url.Action("ApproveKursDetail", "KursDetailEdit")">
+                <div class="form-group">
+                    <label>Kurs içeriğini onaylamak istiyor musunuz?</label>
+                </div>
+                <input type="hidden" name="ID" value="${kursDetailId}" />
+                <div class="form-group">
+                    <input type="submit" value="Onayla" class="btn btn-success w-100" />
+                </div>
+            </form>
+        `;
+
+        $('#modalTitle').text('Kurs içeriği onayla');
+        $('.modal-body').html(formContent);
+        $('#kursModal').modal('show');
+    }
+
+
+    function openKursDetailsModal(button) {
+        var kursId = button.dataset.kursid;
+
+        $.ajax({
+            url: '@Url.Action("GetKursDetailsByKursID", "KursEdit")',
+            type: 'GET',
+            data: { kursId: kursId },
+            success: function (response) {
+                console.log(response);
+                console.log(kursId);
+                var $modal = $('#kursModal');
+                $modal.find('.modal-body').html('');
+
+                var tbodyContent = '';
+                $.each(response, function (index, kursdetails) {
+                    var durumText = kursdetails.durum === 1 ? "ONAYLI" : "KALDIRILDI";
+                    var durumClass = kursdetails.durum === 1 ? "text-success" : "text-danger";
+
+                    tbodyContent += `
+                            <tr>
+                                <td>${kursdetails.videoLink}</td>
+                                <td>${kursdetails.imageLink}</td>
+                                <td>${kursdetails.description}</td>
+                                <td class="${durumClass}">${durumText}</td>
+                            <td>
+                                <button class="btn btn-warning open-remove-kursdetail-modal"
+                                        data-kursdetailid="${kursdetails.id}">Kaldır</button>
+                                <button class="btn btn-primary open-approve-kursdetail-modal"
+                                        data-kursdetailid="${kursdetails.id}">Onayla</button>
+                                <button class="btn btn-warning open-delete-kursdetail-modal"
+                                        data-kursdetailid="${kursdetails.id}">Sil</button>
+                            </td>
+                            </tr>`;
+                });
+
+                var tableHtml = `
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Video Link</th>
+                                    <th>Resim Link</th>
+                                    <th>Açıklama</th>
+                                    <th>Durum</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>${tbodyContent}</tbody>
+                        </table>`;
+
+                $modal.find('.modal-body').html(tableHtml);
+                $modal.modal('show');
+            },
+            error: function (error) {
+                alert("Hata: " + error);
+            }
+        });
+    }
+
+    function showSuccessMessage(message) {
+        $('#successMessage').text(message);
+        $('#successModal').modal({
+            backdrop: 'static',
+            keyboard: false
+        });
+        $('#successModal').modal('show');
+
+        setTimeout(function () {
+            $('#successModal').modal('hide');
+            $('#kursModal').modal('hide');
+        }, 1000);
+    }
+
+    function filterKurs() {
+        var kursGrid = $('#kursGrid');
+
+        $.ajax({
+            url: '@Url.Action("Filter", "KursEdit")',
+            type: 'POST',
+            dataType: 'json',
+            success: function (response) {
+                var data = response;
+                console.log(data);
+                showDatas(data);
+            },
+            error: function (error) {
+                console.log("Hata:", error);
+            }
+        });
+    }
+
+
+    function egitmenFormatter(cellValue, options, rowObject) {
+        return rowObject.egitmen && rowObject.egitmen.name ? rowObject.egitmen.name : '';
+    }
+
+    function dilFormatter(cellValue, options, rowObject) {
+        return rowObject.dil && rowObject.dil.diladi ? rowObject.dil.diladi : '';
+    }
+
+    function showDatas(data) {
+        var kursGrid = $('#kursGrid');
+
+        if (kursGrid.length) {
+            kursGrid.jqGrid('GridUnload');
+
+            kursGrid.jqGrid({
+                data: data,
+                colModel: [
+                    { name: 'id', label: 'ID', width: 40, align: 'center' },
+                    { name: 'kursadi', label: 'Kurs Adı', width: 200, align: 'center' },
+                    { name: 'kursaciklama', label: 'Kurs Açıklama', width: 200, align: 'center' },
+                    { name: 'egitmen', label: 'Eğitmen', width: 200, align: 'center', formatter: egitmenFormatter },
+                    { name: 'dil', label: 'Dil', width: 200, align: 'center', formatter: dilFormatter },
+                    { name: 'derssayi', label: 'Ders Sayısı', width: 100, align: 'center' },
+                    {
+                        name: 'fiyat',
+                        label: 'Fiyat',
+                        width: 100,
+                        align: 'center',
+                        formatter: function (cellValue) {
+                            return cellValue != null ? cellValue.toString().replace('.', ',') : '';
+                        }
+                    },
+                    {
+                        name: 'durum',
+                        label: 'Durum',
+                        width: 150,
+                        align: 'center',
+                        formatter: function (cellValue) {
+                            switch (cellValue) {
+                                case 1:
+                                    return '<span style="color: green;">AKTİF</span>';
+                                case 2:
+                                    return '<span style="color: red;">KALDIRILDI</span>';
+                                default:
+                                    return '';
+                            }
+                        }
+                    },
+                    {
+                        name: 'actions',
+                        label: 'İşlemler',
+                        width: 400,
+                        align: 'center',
+                        formatter: function (cellValue, options, rowObject) {
+                            var buttons =
+                                '<button class="btn btn-primary open-edit-modal" style="margin:0px 10px;" ' +
+                                'data-kursid="' + rowObject.id + '" ' +
+                                'data-kurs-data=\'' + JSON.stringify({
+                                    ID: rowObject.id,
+                                    Kursadi: rowObject.kursadi,
+                                    Kursaciklama: rowObject.kursaciklama,
+                                    DersSayisi: rowObject.derssayi,
+                                    Fiyat: rowObject.fiyat,
+                                    Durum: rowObject.durum,
+                                    Egitmen: rowObject.egitmen || {},
+                                    Dil: rowObject.dil || {},
+                                    Egitmenler: rowObject.egitmenler || [],
+                                    Diller: rowObject.diller || []
+                                }).replace(/'/g, "&quot;") + '\' >Düzenle</button>' +
+
+                                '<button class="btn btn-success open-approve-modal" style="margin:0px 10px;" ' +
+                                'data-kursid="' + rowObject.id + '" ' +
+                                'data-kursdurum="' + rowObject.durum + '">Onayla</button>' +
+
+                                '<button class="btn btn-warning open-remove-modal" style="margin:0px 10px;" ' +
+                                'data-kursid="' + rowObject.id + '" ' +
+                                'data-kursdurum="' + rowObject.durum + '">Kaldır</button>' +
+
+                                '<button class="btn btn-warning open-delete-modal" style="margin:0px 10px;" ' +
+                                'data-kursid="' + rowObject.id + '" ' +
+                                'data-kursdurum="' + rowObject.durum + '">Sil</button>' +
+
+                                '<button class="btn btn-primary open-kursdetails-modal" data-kursid="'+ rowObject.id +'">Detayları Gör</button> ';
+
+                            return buttons;
+
+                        }
+                    }
+                ],
+
+                pager: '#kursGridPager',
+                rowNum: 10,
+                rowList: [10, 20, 30, 40, 50],
+                sortname: 'id',
+                viewrecords: true,
+                autoheight: true,
+                autoWidth: true,
+                responsive: true
+            });
+        }
+    }
+
+
+    function openApproveKursModal(button) {
+        var data = button.dataset;
+
+        var formContent = `
+                        <form method="post" action="@Url.Action("ApproveKurs", "KursEdit")">
+                        <div class="form-group">
+                            <label>Onaylamak istiyor musunuz ?</label>
+                        </div>
+
+                        <div class="form-group">
+                            <input type="text" id="ID" name="ID" class="form-control" value="${data.kursid}" required hidden/>
+                        </div>
+
+                        <div class="form-group">
+                        <input type="submit" value="Onayla" class="btn btn-warning w-100" />
+                        </div>
+                        </form>
+                         `;
+
+        $('#modalTitle').text('Kurs Onayla');
+        $('.modal-body').html(formContent);
+        $('#kursModal').modal('show');
+    }
+
+    function openRemoveKursModal(button) {
+        var data = button.dataset;
+
+        var formContent = `
+                    <form method="post" action="@Url.Action("RemoveKurs", "KursEdit")">
+                    <div class="form-group">
+                        <label>Kaldırmak istiyor musunuz ?</label>
+                    </div>
+
+                    <div class="form-group">
+                        <input type="text" id="ID" name="ID" class="form-control" value="${data.kursid}" required hidden/>
+                    </div>
+
+                    <div class="form-group">
+                    <input type="submit" value="Kaldır" class="btn btn-warning w-100" />
+                    </div>
+                    </form>
+                     `;
+
+        $('#modalTitle').text('Kurs Kaldır');
+        $('.modal-body').html(formContent);
+        $('#kursModal').modal('show');
+    }
+
+    function openDeleteKursModal(button) {
+        var data = button.dataset;
+
+        var formContent = `
+                    <form method="post" action="@Url.Action("DeleteKurs", "KursEdit")">
+                    <div class="form-group">
+                        <label>Silmek istiyor musunuz ?</label>
+                    </div>
+
+                    <div class="form-group">
+                        <input type="text" id="ID" name="ID" class="form-control" value="${data.kursid}" required hidden/>
+                    </div>
+
+                    <div class="form-group">
+                    <input type="submit" value="Sil" class="btn btn-warning w-100" />
+                    </div>
+                    </form>
+                     `;
+
+        $('#modalTitle').text('Kurs Sil');
+        $('.modal-body').html(formContent);
+        $('#kursModal').modal('show');
+    }
+
+
+    function openYeniKursModal() {
+    $.ajax({
+        url: '@Url.Action("GetActiveEgitmenlerAndDiller", "KursEdit")',
+            type: 'GET',
+        dataType: 'json',
+        success: function (response) {
+            console.log(response);
+            var egitmenOptions = response.egitmenler.map(function (egitmen) {
+                return `<option value="${egitmen.kullaniciAdi}">${egitmen.kullaniciAdi}</option>`;
+            }).join('');
+
+            var dilOptions = response.diller.map(function (dil) {
+                return `<option value="${dil.dilAdi}">${dil.dilAdi}</option>`;
+            }).join('');
+
+            var formContent = `
+                <form method="post" action="@Url.Action("AddEditKurs", "KursEdit")">
+                    <div class="form-group">
+                        <label for="KursAdi">Kurs Adı:</label>
+                        <input type="text" id="KursAdi" name="KursAdi" class="form-control" required />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="EgitmenKullaniciAdi">Eğitmen :</label>
+                        <select id="EgitmenKullaniciAdi" name="EgitmenKullaniciAdi" class="form-control" required>
+                            <option value="">Seçiniz</option>
+                            ${egitmenOptions}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="DilAdi">Dil :</label>
+                        <select id="DilAdi" name="DilAdi" class="form-control" required>
+                            <option value="">Seçiniz</option>
+                            ${dilOptions}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="KursAciklama">Kurs Açıklaması:</label>
+                        <textarea id="KursAciklama" name="KursAciklama" class="form-control" rows="3" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="Fiyat">Fiyat:</label>
+                        <input type="text" id="Fiyat" name="Fiyat" class="form-control" required oninput="this.value = this.value.replace('.', ',');" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="Durum">Durum :</label>
+                        <select id="Durum" name="Durum" class="form-control" required>
+                            <option value="1">AKTİF</option>
+                            <option value="2">KALDIRILDI</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <input type="submit" value="Oluştur" class="btn btn-primary w-100" />
+                    </div>
+                </form>
+            `;
+
+            $('#modalTitle').text('Kurs Oluştur');
+            $('.modal-body').html(formContent);
+            $('#kursModal').modal('show');
+        },
+        error: function (error) {
+            console.log("Hata:", error);
+        }
+    });
+}
+
+    function openEditKursModal(button) {
+        const data = JSON.parse(button.dataset.kursData);
+
+        const egitmenlerOptions = (data.Egitmenler || []).map(egitmen => `
+            <option value="${egitmen}" ${data.Egitmen?.name === egitmen ? 'selected' : ''}>${egitmen}</option>
+        `).join('');
+
+        const dillerOptions = (data.Diller || []).map(dil => `
+            <option value="${dil}" ${data.Dil?.diladi === dil ? 'selected' : ''}>${dil}</option>
+        `).join('');
+
+        const fiyatValue = typeof data.Fiyat === 'number' ? data.Fiyat.toString().replace('.', ',') : data.Fiyat.replace('.', ',');
+
+        const formContent = `
+            <form method="post" action="/KursEdit/AddEditKurs">
+                <div class="form-group">
+                    <input type="hidden" name="ID" value="${data.ID}" required />
+                </div>
+                <div class="form-group">
+                    <label for="KursAdi">Kurs Adı:</label>
+                    <input type="text" id="KursAdi" name="KursAdi" class="form-control" value="${data.Kursadi}" required />
+                </div>
+                <div class="form-group">
+                    <label for="EgitmenKullaniciAdi">Eğitmen:</label>
+                    <select id="EgitmenKullaniciAdi" name="EgitmenKullaniciAdi" class="form-control" required>
+                        <option value="">Seçiniz</option>
+                        ${egitmenlerOptions}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="DilAdi">Dil:</label>
+                    <select id="DilAdi" name="DilAdi" class="form-control" required>
+                        <option value="">Seçiniz</option>
+                        ${dillerOptions}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="KursAciklama">Kurs Açıklaması:</label>
+                    <textarea id="KursAciklama" name="KursAciklama" class="form-control" rows="3" required>${data.Kursaciklama}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="Fiyat">Fiyat:</label>
+                    <input type="text" id="Fiyat" name="Fiyat" class="form-control" value="${fiyatValue}" required oninput="this.value = this.value.replace('.', ',');" />
+                </div>
+                <div class="form-group">
+                    <label for="Durum">Durum:</label>
+                    <select id="Durum" name="Durum" class="form-control" required>
+                        <option value="1" ${data.Durum == '1' ? 'selected' : ''}>AKTİF</option>
+                        <option value="2" ${data.Durum == '2' ? 'selected' : ''}>KALDIRILDI</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <input type="submit" value="Düzenle" class="btn btn-primary w-100" />
+                </div>
+            </form>
+        `;
+
+        $('#modalTitle').text('Kurs Düzenle');
+        $('.modal-body').html(formContent);
+        $('#kursModal').modal('show');
+    }
+
+
+</script>

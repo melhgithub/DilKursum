@@ -1,0 +1,109 @@
+html {
+  font-size: 14px;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+ul.social-list.mt-3 {
+    display: flex;
+}
+body {
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+}
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+footer {
+    position: relative;
+    bottom: 0;
+    width: 100%;
+}
+
+
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+body {
+  margin-bottom: 60px;
+}
+
+.hover-effect {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: none;
+}
+
+    .hover-effect:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); 
+    }
+
+.card-title {
+    color: #007bff;
+}
+
+.card-text {
+    font-size: 3rem;
+    color: #333;
+}
+
+@keyframes slide-in-left {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+
+@keyframes slide-in-right {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.slide-in-left {
+    animation: slide-in-left 0.5s ease forwards;
+}
+
+.slide-in-right {
+    animation: slide-in-right 0.5s ease forwards;
+}
+
+
+
+a{
+    text-decoration:none;
+    list-style:none;
+}
+ul{
+    list-style:none;
+}
+li{
+    list-style:none;
+}

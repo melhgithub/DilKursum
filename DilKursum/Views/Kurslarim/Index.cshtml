@@ -1,0 +1,617 @@
+﻿@model DilKursum.Models.KurslarimModel
+@using EntityLayer.Concrete
+@{
+    ViewData["Title"] = "Kurslarım";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var userRole = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
+    var x = 0;
+}
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- Bootstrap JS -->
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+
+<head>
+    <style>
+        .clickable {
+            cursor: pointer;
+            background-color: #e7f3fe;
+            border-left: 5px solid #2196F3;
+        }
+
+            .clickable:hover {
+                background-color: #d4edda;
+            }
+
+    </style>
+</head>
+
+<div class="container">
+    <div class="row">
+        <h2 class="mb-4 text-center">Kurslarım</h2>
+        @if (User.IsInRole("egitmen"))
+        {
+            <button type="button" class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#kursEkleModal">
+                Yeni Kurs Ekle
+            </button>
+
+            <div class="modal fade" id="kursEkleModal" tabindex="-1" role="dialog" aria-labelledby="kursEkleModalLabel" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="kursEkleModalLabel">Yeni Kurs Ekle</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+
+                        </div>
+                        <form action="/Kurslarim/AddEditKurs" method="post">
+                            <div class="modal-body">
+                                <input type="hidden" name="EgitmenKullaniciAdi" value="@User.Identity.Name" />
+                                <div class="form-group">
+                                    <label for="KursAdi">Kurs Adı</label>
+                                    <input type="text" class="form-control" id="KursAdi" name="KursAdi" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="KursAciklama">Kurs Açıklama</label>
+                                    <textarea class="form-control" id="KursAciklama" name="KursAciklama" rows="3" required></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="Fiyat">Fiyat</label>
+                                    <input type="text" id="Fiyat" name="Fiyat" class="form-control" required oninput="this.value = this.value.replace('.', ',');" />
+                                </div>
+                                <div class="form-group">
+                                    <label for="DilAdi">Dil Seç</label>
+                                    <select class="form-control" id="DilAdi" name="DilAdi" required>
+                                        @foreach (var dil in Model.Diller)
+                                        {
+                                            <option value="@dil.DilAdi">@dil.DilAdi</option>
+                                        }
+                                    </select>
+                                </div>
+
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">İptal</button>
+                                <button type="submit" class="btn btn-success">Kurs Ekle</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+        }
+
+        @foreach (var kurs in Model.Kurslar)
+        {
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header text-center bg-primary text-white">
+                        <h3 class="title">
+                            @kurs.KursAdi
+                        </h3>
+                    </div>
+                    <div class="card-body d-flex flex-column">
+                        <p class="card-text">@kurs.KursAciklama</p>
+
+
+
+                        <div class="mt-auto">
+                            <ul class="list-group mb-3 flex-grow-1">
+                                <li class="list-group-item">
+                                    <strong>Dil:</strong> @kurs.Dil.DilAdi
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Fiyat:</strong> @kurs.Fiyat
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Ders Sayısı:</strong> @kurs.DersSayisi
+                                </li>
+
+                                @if (User.IsInRole("kursiyer"))
+                                {
+                                    <li class="list-group-item">
+                                        <strong>Eğitmen:</strong> @kurs.Egitmen.KullaniciAdi
+                                    </li>
+                                }
+
+                                else if (User.IsInRole("egitmen"))
+                                {
+                                    <li class="list-group-item">
+                                        <strong>Kursiyer Sayısı:</strong> @Model.KursiyerSayilari[kurs.ID]
+                                    </li>
+                                }
+                                <li class="list-group-item">
+                                    <strong>Durum:</strong>
+                                    <span class="badge @(kurs.Durum == KursDurum.Approved ? "bg-success" : "bg-danger")">
+                                        @(kurs.Durum == KursDurum.Approved ? "Aktif" : "Kaldırıldı")
+                                    </span>
+                                </li>
+                            </ul>
+
+                            @if (User.IsInRole("kursiyer") && kurs.Durum == KursDurum.Approved)
+                            {
+                                <button class="btn btn-info w-100 mb-2" data-toggle="modal" data-target="#kursDetayModal_@kurs.ID">İçerikler</button>
+                            }
+                            else if (User.IsInRole("egitmen"))
+                            {
+                                <button class="btn btn-info w-100 mb-2" data-toggle="modal" data-target="#kursDetayModal_@kurs.ID">İçerikler</button>
+
+                                @if (kurs.Durum == KursDurum.Approved)
+                                {
+                                    <button type="button" class="btn btn-primary w-100 mb-2" data-bs-toggle="modal" data-bs-target="#addkursDetailModal-@kurs.ID">
+                                        Yeni İçerik Ekle
+                                    </button>
+                                    <a href="javascript:void(0)" class="btn btn-warning w-100" data-toggle="modal" data-target="#editKursModal_@kurs.ID">Düzenle</a>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-secondary w-100 mb-2" disabled>Yeni İçerik Ekle</button>
+                                    <button type="button" class="btn btn-secondary w-100 mb-2" disabled>Düzenle</button>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="addkursDetailModal-@kurs.ID" tabindex="-1" role="dialog" aria-labelledby="addKursDetailModalLabel" aria-hidden="true" data-kurs-id="@kurs.ID">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="addKursDetailModalLabel">@kurs.KursAdi İçerik Ekle</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+
+                        </div>
+                        <form action="/Kurslarim/AddEditKursDetailForEgitmen" method="post">
+                            <div class="modal-body">
+                                <input type="hidden" name="kursId" id="kursId-@kurs.ID" value="@kurs.ID" />
+
+
+                                <div class="form-group">
+                                    <label for="VideoLink">Video Link</label>
+                                    <select class="form-control" id="VideoLink" name="VideoLink">
+                                        <option value="">İçerik Seçin</option>
+                                        @foreach (var dosyalar in Model.Dosyalar.Where(d => d.IsVideo == true))
+                                        {
+                                            <option value="@dosyalar.Name">@dosyalar.FileName</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="ImageLink">Resim Link</label>
+                                    <select class="form-control" id="ImageLink" name="ImageLink">
+                                        <option value="">İçerik Seçin</option>
+                                        @foreach (var dosyalar in Model.Dosyalar.Where(d => d.IsVideo == false))
+                                        {
+                                            <option value="@dosyalar.Name">@dosyalar.FileName</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="Description">Açıklama</label>
+                                    <textarea class="form-control" id="Description" name="Description" rows="3" required></textarea>
+                                </div>
+
+
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">İptal</button>
+
+                                <button type="submit" class="btn btn-primary">Güncelle</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="editKursModal_@kurs.ID" tabindex="-1" role="dialog" aria-labelledby="editKursModalLabel" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="editKursModalLabel">@kurs.KursAdi Düzenle</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+
+                        </div>
+                        <form action="/Kurslarim/AddEditKurs" method="post">
+                            <input type="hidden" name="EgitmenKullaniciAdi" value="@User.Identity.Name" />
+                            <div class="modal-body">
+                                <input type="hidden" name="ID" value="@kurs.ID" />
+
+                                <div class="form-group">
+                                    <label for="KursAdi">Kurs Adı</label>
+                                    <input type="text" class="form-control" id="KursAdi" name="KursAdi" value="@kurs.KursAdi" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="KursAciklama">Kurs Açıklama</label>
+                                    <textarea class="form-control" id="KursAciklama" name="KursAciklama" rows="3" required>@kurs.KursAciklama</textarea>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="Fiyat">Fiyat</label>
+                                    <input type="text" id="Fiyat" name="Fiyat" class="form-control" oninput="this.value = this.value.replace('.', ',');" value="@kurs.Fiyat.ToString("F2").Replace('.', ',')" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="DilAdi">Dil Seç</label>
+                                    <select class="form-control" id="DilAdi" name="DilAdi" required>
+                                        @foreach (var dil in Model.Diller)
+                                        {
+                                            if (dil.ID == kurs.DilID)
+                                            {
+                                                <option value="@dil.DilAdi" selected>@dil.DilAdi</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@dil.DilAdi">@dil.DilAdi</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="Durum">Durum</label>
+                                    <input type="text" class="form-control" id="Durum" name="Durum"
+                                           value="@(kurs.Durum == KursDurum.Approved ? "Onaylı" : "Kaldırıldı")"
+                                           readonly
+                                           style="background-color: @(kurs.Durum == KursDurum.Approved ? "#d4edda" : "#f8d7da"); color: @(kurs.Durum == KursDurum.Approved ? "#155724" : "#721c24");" />
+                                </div>
+
+
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">İptal</button>
+                                <button type="submit" class="btn btn-primary">Güncelle</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="kursDetayModal_@kurs.ID" tabindex="-1" role="dialog" aria-labelledby="kursDetayModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-xl" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="kursDetailModalLabel">Kurs Detayları</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="container">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h5>Kurs İçerikleri</h5>
+                                        <ul id="modalIcerikler" class="list-group mt-2">
+                                            @foreach (var kursdetails in Model.KursDetaylari.Where(d => d.KursID == kurs.ID))
+                                            {
+                                                if (kursdetails.Durum == (KursDetailDurum)1)
+                                                {
+                                                    <li class="list-group-item clickable"
+                                                        data-video="@Url.Content($"~/uploads/{kursdetails.VideoLink}")"
+                                                        data-image="@Url.Content($"~/uploads/{kursdetails.ImageLink}")">
+                                                        Açıklama: @kursdetails.Description
+                                                    </li>
+                                                }
+                                                else
+                                                {
+                                                    if (User.IsInRole("egitmen"))
+                                                    {
+                                                        <li class="list-group-item"
+                                                            data-video="@Url.Content($"~/uploads/{kursdetails.VideoLink}")"
+                                                            data-image="@Url.Content($"~/uploads/{kursdetails.ImageLink}")">
+                                                            Açıklama: @kursdetails.Description
+                                                        </li>
+                                                    }
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h5>Kurs Bilgileri</h5>
+                                        <ul class="list-group">
+                                            @foreach (var kurss in Model.Kurslar.Where(d => d.ID == kurs.ID))
+                                            {
+                                                <li class="list-group-item"><strong>Kurs Adı:</strong> <span id="modalKursAdi">@kurss.KursAdi</span></li>
+                                                <li class="list-group-item"><strong>Açıklama:</strong> <span id="modalKursAciklama">@kurss.KursAciklama</span></li>
+                                                <li class="list-group-item"><strong>Dil:</strong> <span id="modalKursAciklama">@kurss.Dil.DilAdi</span></li>
+                                                <li class="list-group-item"><strong>Ders Sayısı:</strong> <span id="modalDersSayisi">@kurss.DersSayisi</span></li>
+                                                <li class="list-group-item"><strong>Fiyat:</strong> <span id="modalFiyat">@string.Format("{0:F2} TL", kurss.Fiyat)</span></li>
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="row mt-4">
+                                    <div class="col-md-6">
+                                        <h5>Kurs Ön İzleme</h5>
+                                        <iframe id="modalVideo" class="w-100" height="315" frameborder="0" allowfullscreen></iframe>
+                                        <img id="modalImage" class="w-100" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        @foreach (var kurss in Model.Kurslar.Where(d => d.ID == kurs.ID))
+                                        {
+                                            <h5>Eğitmen Bilgileri</h5>
+                                            <p id="modalEgitmenBilgi">@kurss.Egitmen.Isim @kurss.Egitmen.Soyisim (@kurss.Egitmen.KullaniciAdi)</p>
+                                            <p id="modalEgitmenKisaBilgi">@kurss.Egitmen.KisaBilgi</p>
+
+                                            if (User.IsInRole("egitmen"))
+                                            {
+                                                <button class="btn btn-success w-100 mb-2" data-toggle="modal" data-target="#kursDetayyModal_@kurs.ID">Düzenle</button>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Kapat</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <div class="modal fade" id="kursDetayyModal_@kurs.ID" tabindex="-1" role="dialog" aria-labelledby="kursDetayyModalLabel" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="kursDetayModalLabel">@kurs.KursAdi İçerikleri</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+
+                        </div>
+                        <div class="modal-body">
+                            @foreach (var detay in Model.KursDetaylari.Where(d => d.KursID == kurs.ID && User.IsInRole("egitmen")))
+                            {
+
+                                <div>
+                                    @foreach (var files in Model.Dosyalar.Where(p => p.Name == detay.VideoLink))
+                                    {
+                                        <strong>Video:</strong> @files.FileName
+
+                                        <br />
+                                    }
+                                    @foreach (var files in Model.Dosyalar.Where(p => p.Name == detay.ImageLink))
+                                    {
+                                        <strong>Resim:</strong> @files.FileName
+
+                                        <br />
+                                    }
+                                    <strong>Açıklama:</strong> @detay.Description<br />
+                                    @if (kurs.Durum == KursDurum.Removed)
+                                    {
+                                        <strong>Durum:</strong> @detay.Durum.ToString() <br />
+                                        <span class="btn btn-secondary" disabled>Düzenle</span>
+                                    }
+                                    else
+                                    {
+
+                                        <span class="badge @(detay.Durum == KursDetailDurum.Approved ? "bg-success" : "bg-danger")">
+                                            @(detay.Durum == KursDetailDurum.Approved ? "Aktif" : "Kaldırıldı")
+                                        </span>
+
+                                        <a href="javascript:void(0)" class="btn btn-primary w-100" data-toggle="modal" data-target="#editKursDetailModal_@detay.ID">Düzenle</a>
+
+                                    }
+
+                                    <div class="modal fade" id="editKursDetailModal_@detay.ID" tabindex="-1" role="dialog" aria-labelledby="editKursDetailModalLabel" aria-hidden="true">
+                                        <div class="modal-dialog" role="document">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="editKursDetailModalLabel">@kurs.KursAdi İçeriği Düzenle</h5>
+                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                        <span aria-hidden="true">&times;</span>
+                                                    </button>
+
+                                                </div>
+                                                <form action="/Kurslarim/AddEditKursDetailForEgitmen" method="post">
+                                                    <div class="modal-body">
+                                                        <input type="hidden" name="ID" id="ID" value="@detay.ID" />
+
+                                                        <div class="form-group">
+                                                            <label for="KursID">Kurs Seçin</label>
+                                                            <select class="form-control" id="kursId" name="kursId" required>
+                                                                <option value="">Kurs Seçin</option>
+                                                                @foreach (var kurslar in Model.Kurslar)
+                                                                {
+                                                                    if (kurslar.ID == detay.KursID)
+                                                                    {
+                                                                        <option value="@kurslar.ID" selected>@kurslar.KursAdi</option>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <option value="@kurslar.ID">@kurslar.KursAdi</option>
+                                                                    }
+                                                                }
+                                                            </select>
+                                                        </div>
+
+                                                        <div class="form-group">
+                                                            <label for="VideoLink">Video İçerik</label>
+                                                            <select class="form-control" id="VideoLink" name="VideoLink">
+                                                                <option value="">İçerik Seçin</option>
+                                                                @foreach (var dosyalar in Model.Dosyalar)
+                                                                {
+                                                                    if (dosyalar.IsVideo == true)
+                                                                    {
+                                                                        if (dosyalar.Name == detay.VideoLink)
+                                                                        {
+                                                                            <option value="@dosyalar.Name" selected>@dosyalar.FileName</option>
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <option value="@dosyalar.Name">@dosyalar.FileName</option>
+                                                                        }
+                                                                    }
+                                                                }
+                                                            </select>
+                                                        </div>
+
+                                                        <div class="form-group">
+                                                            <label for="ImageLink">Resim İçerik</label>
+                                                            <select class="form-control" id="ImageLink" name="ImageLink">
+                                                                <option value="">İçerik Seçin</option>
+                                                                @foreach (var dosyalar in Model.Dosyalar)
+                                                                {
+                                                                    if (dosyalar.IsVideo == false)
+                                                                    {
+                                                                        if (dosyalar.Name == detay.ImageLink)
+                                                                        {
+                                                                            <option value="@dosyalar.Name" selected>@dosyalar.FileName</option>
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <option value="@dosyalar.Name">@dosyalar.FileName</option>
+                                                                        }
+                                                                    }
+                                                                }
+                                                            </select>
+                                                        </div>
+
+                                                        <div class="form-group">
+                                                            <label for="Description">Açıklama</label>
+                                                            <textarea class="form-control" id="Description" name="Description" rows="3">@detay.Description</textarea>
+                                                        </div>
+
+
+
+                                                        <div class="form-group">
+                                                            <label for="Durum">Durum</label>
+                                                            <input type="text" class="form-control" id="Durum" name="Durum"
+                                                                   value="@(detay.Durum == KursDetailDurum.Approved ? "Onaylı" : "Kaldırıldı")"
+                                                                   readonly
+                                                                   style="background-color: @(detay.Durum == KursDetailDurum.Approved ? "#d4edda" : "#f8d7da"); color: @(detay.Durum == KursDetailDurum.Approved ? "#155724" : "#721c24");" />
+                                                        </div>
+
+
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">İptal</button>
+
+                                                        <button type="submit" class="btn btn-primary">Güncelle</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <hr />
+
+
+
+
+
+                            }
+
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Kapat</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        }
+    </div>
+</div>
+
+
+
+<div class="modal fade" id="kurssuccessModal" tabindex="-1" role="dialog" aria-labelledby="successModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="kurssuccessModalLabel">Sonuç</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+
+
+            </div>
+            <div class="modal-body text-center" id="kurssuccessMessage">
+                <p>İşleminiz başarılı bir şekilde tamamlandı!</p>
+                <i class="fas fa-check-circle" style="font-size: 50px; color: green;"></i>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">İptal</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+<style>
+</style>
+
+<script>
+        $(document).ready(function() {
+        $('#modalIcerikler').on('click', '.clickable', function() {
+            var videoLink = $(this).data('video');
+            var imageLink = $(this).data('image');
+            var description = $(this).text().replace('Açıklama ', '');
+
+            $('#modalVideo').hide();
+            $('#modalImage').hide();
+
+            if (videoLink) {
+                $('#modalVideo').attr('src', videoLink).show();
+            }
+
+            if (imageLink) {
+                $('#modalImage').attr('src', imageLink).show();
+            }
+
+            $('#modalVideo').closest('.col-md-6').find('h5').text(description);
+        });
+    });
+
+
+    $(document).on('submit', 'form:not(#filterForm)', function (e) {
+            e.preventDefault();
+            var form = $(this);
+            $.ajax({
+                url: form.attr('action'),
+                type: form.attr('method'),
+                data: form.serialize(),
+                success: function (response) {
+                    if (response.success) {
+                        showkursSuccessMessage(response.message);
+                    } else {
+                        alert("Başarısız");
+                    }
+                },
+                error: function (error) {
+                    alert("Başarısız");
+                }
+            });
+        });
+
+    function showkursSuccessMessage(message) {
+        $('#kurssuccessMessage').text(message);
+        $('#kurssuccessModal').modal({
+            backdrop: 'static',
+            keyboard: false
+        });
+        $('#kurssuccessModal').modal('show');
+
+        setTimeout(function () {
+            $('.modal').modal('hide');
+            setTimeout(function() {
+            window.location.reload();
+        }, 500);
+        }, 1000);
+    }
+
+
+</script>

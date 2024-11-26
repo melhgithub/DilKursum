@@ -1,0 +1,187 @@
+﻿@model DilKursum.Models.DosyalarimModel
+
+@{
+    ViewData["Title"] = "Dosyalarım";
+}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet" />
+<link href="~/css/dosyalarimegitmen.css" rel="stylesheet" />
+
+<div class="container">
+    <h3 class="text-center">Dosyalar</h3>
+
+    <button type="button" class="btn btn-primary mb-3 w-100" data-toggle="modal" data-target="#dosyaEkleModal">
+        Yeni Dosya Ekle
+    </button>
+
+    <div class="mb-3">
+        <input type="text" id="searchBar" class="form-control" placeholder="Dosya adında veya görünen isimde ara..." onkeyup="filterFiles()" />
+        <div class="form-check mt-2">
+            <input type="checkbox" class="form-check-input" id="filterVideo" onchange="filterFiles()" />
+            <label class="form-check-label" for="filterVideo">Sadece Videolar</label>
+        </div>
+        <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="filterImage" onchange="filterFiles()" />
+            <label class="form-check-label" for="filterImage">Sadece Resimler</label>
+        </div>
+    </div>
+
+    <div class="row" id="fileList">
+        @foreach (var dosya in Model.Dosyalar)
+        {
+            <div class="col-md-3 file-item"
+                 data-name="@dosya.Name"
+                 data-filename="@dosya.FileName"
+                 data-type="@(dosya.IsVideo ? "video" : "image")">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h3 class="card-title text-center">@dosya.FileName</h3>
+                        <h5 class="text-center">
+                            Tür:@(dosya.IsVideo ? "Video" : "Resim")<br />
+                        </h5>
+
+                        @if (dosya.IsVideo)
+                        {
+                            <video width="100%" height="auto" controls>
+                                <source src="@Url.Content("~/uploads/" + dosya.Name)" type="video/@dosya.Name.Substring(dosya.Name.LastIndexOf('.') + 1)" />
+                                Your browser does not support the video tag.
+                            </video>
+                        }
+                        else
+                        {
+                            <img src="@Url.Content("~/uploads/" + dosya.Name)" class="img-fluid" alt="Image" style="max-height: 200px; object-fit: cover;" />
+                        }
+
+                        <button type="button" class="btn btn-danger" onclick="confirmDelete(@dosya.ID, @dosya.EgitmenID)">Sil</button>
+                        <button type="button" class="btn btn-warning" onclick="openEditModal(@dosya.ID)">Düzenle</button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="modal fade" id="dosyaEkleModal" tabindex="-1" role="dialog" aria-labelledby="dosyaEkleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="dosyaEkleModalLabel">Yeni Dosya Ekle</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form action="@Url.Action("YeniDosya", "Dosyalarim")" method="post" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="fileName">Dosya Adı (Görünür İsim)</label>
+                        <input type="text" class="form-control" id="fileName" name="fileName" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="file">Dosya Seç</label>
+                        <input type="file" class="form-control" id="file" name="file" required />
+                    </div>
+                    <input type="hidden" name="EgitmenID" value="@ViewBag.EgitmenID" />
+                    <button type="submit" class="btn btn-primary">Ekle</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="dosyaDuzenleModal" tabindex="-1" role="dialog" aria-labelledby="dosyaDuzenleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="dosyaDuzenleModalLabel">Dosya Düzenle</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form action="@Url.Action("DosyaDuzenle", "Dosyalarim")" method="post" enctype="multipart/form-data">
+                    <input type="hidden" id="editFileId" name="dosyaId" />
+                    <div class="form-group">
+                        <label for="editFileName">Dosya Adı (Görünür İsim)</label>
+                        <input type="text" class="form-control" id="editFileName" name="fileName" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="editFile">Yeni Dosya Seç</label>
+                        <input type="file" class="form-control" id="editFile" name="file" />
+                    </div>
+                    <button type="submit" class="btn btn-primary">Güncelle</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="fileActionToast" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+    <div class="toast-header">
+        <strong class="mr-auto">İşlem Başarılı</strong>
+        <button type="button" class="ml-2 mb-1 close" data-dismiss="toast">&times;</button>
+    </div>
+    <div class="toast-body">
+        Dosya başarıyla eklendi.
+    </div>
+</div>
+
+<script>
+    function filterFiles() {
+        const searchQuery = document.getElementById('searchBar').value.toLowerCase();
+        const filterVideo = document.getElementById('filterVideo').checked;
+        const filterImage = document.getElementById('filterImage').checked;
+
+        const fileItems = document.querySelectorAll('.file-item');
+        const filterVideoIndicator = document.getElementById('filterVideoIndicator');
+
+
+        const filterImageIndicator = document.getElementById('filterImageIndicator');
+
+
+        fileItems.forEach(item => {
+            const name = item.getAttribute('data-name').toLowerCase();
+            const fileName = item.getAttribute('data-filename').toLowerCase();
+            const type = item.getAttribute('data-type');
+
+            const matchesSearch = name.includes(searchQuery) || fileName.includes(searchQuery);
+            const matchesVideo = filterVideo ? type === 'video' : true;
+            const matchesImage = filterImage ? type === 'image' : true;
+
+            if (matchesSearch && matchesVideo && matchesImage) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    function confirmDelete(dosyaId, egitmenId) {
+        if (confirm("Bu dosyayı silmek istediğinizden emin misiniz?")) {
+            $.ajax({
+                url: '@Url.Action("DosyaSil", "Dosyalarim")',
+                type: 'POST',
+                data: { dosyaId: dosyaId, egitmenId: egitmenId },
+                success: function () {
+                    location.reload();
+                },
+                error: function () {
+                    alert("Bir hata oluştu. Lütfen tekrar deneyin.");
+                }
+            });
+        }
+    }
+
+    function openEditModal(dosyaId) {
+        $.get('@Url.Action("GetDosyaEditForm", "Dosyalarim")', { id: dosyaId }, function (data) {
+            $('#editFileName').val(data.fileName);
+            $('#editFileId').val(data.id);
+            $('#dosyaDuzenleModal').modal('show');
+        });
+    }
+
+    function showToast(message) {
+        $('#fileActionToast .toast-body').text(message);
+        $('#fileActionToast').toast('show');
+    }
+</script>

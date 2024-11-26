@@ -1,0 +1,30 @@
+﻿@using EntityLayer.Concrete
+@model List<Kurs>
+
+<div class="modal-body">
+    <h5><center>Kurslar</center></h5>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Kurs Adı</th>
+                <th>Açıklama</th>
+                <th>Ders Sayısı</th>
+                <th>Fiyat</th>
+                <th>Durum</th>
+                <th>İşlemler</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var kurs in Model)
+            {
+                <tr>
+                    <td>@kurs.KursAdi</td>
+                    <td>@kurs.KursAciklama</td>
+                    <td>@kurs.DersSayisi</td>
+                    <td>@kurs.Fiyat</td>
+                    <td>@kurs.Durum</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

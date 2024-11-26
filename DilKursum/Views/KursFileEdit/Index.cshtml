@@ -1,0 +1,267 @@
+﻿@model IEnumerable<EntityLayer.Concrete.Egitmen>
+
+@{
+    ViewData["Title"] = "Index";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<style>
+    .list-group-item.active {
+        background-color: #007bff;
+        color: white;
+        font-weight: bold;
+    }
+</style>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+
+<div class="row">
+    <div class="col-md-3">
+        <h3>Eğitmenler</h3>
+        <ul class="list-group">
+            @foreach (var egitmen in Model)
+            {
+                <li class="list-group-item" data-id="@egitmen.ID" onclick="getDosyalar(@egitmen.ID)">
+                    @egitmen.Isim @egitmen.Soyisim - @egitmen.KullaniciAdi - @egitmen.Email
+                </li>
+            }
+        </ul>
+    </div>
+
+    <div class="col-md-9">
+        <h3>Dosyalar</h3>
+        <button type="button" class="btn btn-primary mb-3" data-toggle="modal" data-target="#dosyaEkleModal">
+            Yeni Dosya Ekle
+        </button>
+        <div class="mb-3">
+            <input type="text" id="searchBar" class="form-control" placeholder="Dosya adında veya görünen isimde ara..." onkeyup="filterFiles()" />
+            <div class="form-check mt-2">
+                <input type="checkbox" class="form-check-input" id="filterVideo" onchange="filterFiles()" />
+                <label class="form-check-label" for="filterVideo">Sadece Videolar</label>
+            </div>
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="filterImage" onchange="filterFiles()" />
+                <label class="form-check-label" for="filterImage">Sadece Resimler</label>
+            </div>
+        </div>
+
+        <div id="dosyaListesi"></div>
+    </div>
+</div>
+
+<div class="modal fade" id="dosyaEkleModal" tabindex="-1" role="dialog" aria-labelledby="dosyaEkleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="dosyaEkleModalLabel">Yeni Dosya Ekle</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form action="/KursFileEdit/YeniDosya" method="post" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="EgitmenID">Eğitmen Seç</label>
+                        <select class="form-control" id="EgitmenID" name="EgitmenID" required>
+                            @foreach (var egitmen in Model)
+                            {
+                                <option value="@egitmen.ID">@egitmen.Isim @egitmen.Soyisim - @egitmen.KullaniciAdi</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="fileName">Görünür İsim</label>
+                        <input type="text" class="form-control" id="fileName" name="fileName" required />
+                    </div>
+                    <div class="form-group" hidden>
+                        <label for="isVideo">Video mu?</label>
+                        <input type="checkbox" id="isVideo" name="isVideo" hidden />
+                    </div>
+                    <div class="form-group">
+                        <label for="file">Dosya Seç</label>
+                        <input type="file" class="form-control" id="file" name="file" required onchange="checkVideoFile(this)" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">Ekle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editModal" tabindex="-1" role="dialog" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editModalLabel">Dosya Düzenle</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="editModalContent">
+                <form id="editFileForm" action="/KursFileEdit/DosyaDuzenle" method="POST" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="filename">Görünür İsim</label>
+                        <input type="text" class="form-control" id="filename" name="filename" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="file">Dosya Seç</label>
+                        <input type="file" class="form-control" id="file" name="file" required onchange="checkVideoFile(this)" />
+                    </div>
+                    <input type="hidden" id="name" name="name" />
+                    <input type="hidden" id="dosyaId" name="dosyaId" />
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Kapat</button>
+                <button type="submit" class="btn btn-primary" form="editFileForm">Kaydet</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+    function checkVideoFile(input) {
+        var file = input.files[0];
+        var isVideo = false;
+
+        if (file) {
+            var fileExtension = file.name.split('.').pop().toLowerCase();
+            var videoExtensions = ['mp4', 'avi', 'mkv', 'mov'];
+
+            if (videoExtensions.includes(fileExtension)) {
+                isVideo = true;
+            }
+        }
+
+        document.getElementById("isVideo").checked = isVideo;
+    }
+
+    function getDosyalar(egitmenId) {
+        document.querySelectorAll('.list-group-item').forEach(function (item) {
+            item.classList.remove('active');
+        });
+
+        document.querySelector(`li[data-id='${egitmenId}']`).classList.add('active');
+
+        $.ajax({
+            url: '@Url.Action("Dosyalar", "KursFileEdit")',
+            type: 'GET',
+            data: { egitmenId: egitmenId },
+            success: function (data) {
+                $('#dosyaListesi').html(data);
+            }
+        });
+    }
+
+    function filterFiles() {
+        const searchQuery = document.getElementById('searchBar').value.toLowerCase();
+        const filterVideo = document.getElementById('filterVideo').checked;
+        const filterImage = document.getElementById('filterImage').checked;
+
+        const fileItems = document.querySelectorAll('.file-item');
+
+        fileItems.forEach(item => {
+            const name = item.getAttribute('data-name').toLowerCase();
+            const fileName = item.getAttribute('data-filename').toLowerCase();
+            const type = item.getAttribute('data-type');
+
+            const matchesSearch = name.includes(searchQuery) || fileName.includes(searchQuery);
+            const matchesVideo = filterVideo ? type === 'video' : true;
+            const matchesImage = filterImage ? type === 'image' : true;
+
+            if (matchesSearch && matchesVideo && matchesImage) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    function openEditModal(dosyaId) {
+        $.ajax({
+            url: '/KursFileEdit/GetDosyaEditForm',
+            data: { id: dosyaId },
+            success: function (data) {
+                $('#filename').val(data.fileName || '');
+                $('#name').val(data.name);
+                $('#dosyaId').val(data.id);
+
+                $('#editModal').modal('show');
+
+                console.log("Dosya ID: ", data.id);
+                console.log("Görünür İsim: ", data.fileName);
+                console.log("Ad: ", data.name);
+            },
+            error: function () {
+                alert("Bir hata oluştu.");
+            }
+        });
+    }
+
+
+
+
+
+    function saveChanges() {
+        var dosyaId = $('#dosyaId').val();
+        var fileName = $('#filename').val();
+        var name = $('#name').val();
+        var file = $('#file')[0].files[0];
+
+        console.log("Selected file: ", file ? file.name : "No file selected");
+
+        var formData = new FormData();
+        formData.append("dosyaId", dosyaId);
+        formData.append("fileName", fileName);
+        formData.append("name", name);
+
+        if (file) {
+            formData.append("file", file);
+        }
+
+        for (var pair of formData.entries()) {
+            console.log(pair[0]+ ': ' + pair[1]);
+        }
+
+        $.ajax({
+            url: '/KursFileEdit/DosyaDuzenle',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function (response) {
+                $('#editModal').modal('hide');
+                alert('Dosya başarıyla düzenlendi');
+                location.reload();
+            },
+            error: function () {
+                alert("Bir hata oluştu.");
+            }
+        });
+    }
+
+
+    function confirmDelete(dosyaId, egitmenId) {
+        if (confirm("Bu dosyayı silmek istediğinize emin misiniz?")) {
+            $.ajax({
+                url: '@Url.Action("DosyaSil", "KursFileEdit")',
+                type: 'POST',
+                data: { dosyaId: dosyaId, egitmenId: egitmenId },
+                success: function () {
+                    alert("Dosya başarıyla silindi!");
+                    getDosyalar(egitmenId);
+                },
+                error: function () {
+                    alert("Dosya silinirken bir hata oluştu.");
+                }
+            });
+        }
+    }
+
+</script>

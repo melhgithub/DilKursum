@@ -1,0 +1,561 @@
+﻿@using EntityLayer.Concrete
+@using DilKursum.DataTransferObjects
+@using System.ComponentModel
+@using Newtonsoft.Json
+@model KursiyerKursDetailsModel
+@{
+    ViewData["Title"] = "Kursiyer Kursları - Yönetim";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+@await Html.PartialAsync("_ScriptImports")
+<style>
+    .modal.fade .modal-dialog {
+        transform: translate(0, -25%);
+        opacity: 0;
+        transition: all 0.3s ease-out;
+    }
+
+    .modal.show .modal-dialog {
+        transform: translate(0, 0);
+        opacity: 1;
+    }
+
+</style>
+
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i class="fas fa-cubes"></i>
+            Kursiyer Kursları
+        </h3>
+    </div>
+    <div class="card-body">
+        <button id="yeniKursiyerKursDetailButton" class="btn btn-primary w-100">Kursiyere Kurs Ekle</button>
+        <br />
+
+
+        <form id="filterForm">
+            <div class="row">
+
+                <div class="form-group col-md-3">
+                    <label for="KursiyerID">Kursiyer:</label>
+                    <select id="KursiyerID" name="KursiyerID" class="form-control">
+                        <option value="">Tümü</option>
+                        @foreach (var kursiyer in Model.Kursiyerler)
+                        {
+                            <option value="@kursiyer.ID">@kursiyer.KullaniciAdi - @kursiyer.Isim @kursiyer.Soyisim</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group col-md-3">
+                    <label for="DilID">Dil:</label>
+                    <select id="DilID" name="DilID" class="form-control">
+                        <option value="">Tümü</option>
+                        @foreach (var dil in Model.Diller)
+                        {
+                            <option value="@dil.ID">@dil.DilAdi</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group col-md-3">
+                    <label for="EgitmenID">Eğitmen:</label>
+                    <select id="EgitmenID" name="EgitmenID" class="form-control">
+                        <option value="">Tümü</option>
+                        @foreach (var egitmen in Model.Egitmenler)
+                        {
+                            <option value="@egitmen.ID">@egitmen.KullaniciAdi - @egitmen.Isim @egitmen.Soyisim</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="form-group col-md-3">
+                    <label for="KursID">Kurs:</label>
+                    <select id="KursID" name="KursID" class="form-control">
+                        <option value="">Tümü</option>
+                        @foreach (var kurs in Model.Kurslar)
+                        {
+                            <option value="@kurs.ID">@kurs.KursAdi</option>
+                        }
+                    </select>
+                </div>
+
+
+                <div class="form-group col-md-12">
+                    <label for="Durum">Durum:</label>
+                    <select id="Durum" name="Durum" class="form-control">
+                        <option value="">Tümü</option>
+                        <option value="1">AKTİF</option>
+                        <option value="2">KALDIRILDI</option>
+                    </select>
+                </div>
+
+                <button type="button" class="btn btn-primary col-md-12 w-100" id="filterBtn">Filtrele</button>
+            </div>
+        </form>
+
+        <div id="kursiyerKursDetailTable" class="table-responsive">
+            <table id="kursiyerKursDetailGrid" class="table table-bordered table-striped"></table>
+            <div id="kursiyerKursDetailGridPager"></div>
+        </div>
+
+    </div>
+
+</div>
+
+
+<div class="modal fade" id="kursiyerKursDetailModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+
+
+            </div>
+            <div class="modal-body">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="successModal" tabindex="-1" role="dialog" aria-labelledby="successModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="successModalLabel">Sonuç</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+
+
+            </div>
+            <div class="modal-body text-center" id="successMessage">
+                <p>İşleminiz başarılı bir şekilde tamamlandı!</p>
+                <i class="fas fa-check-circle" style="font-size: 50px; color: green;"></i>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+
+    
+    $('#filterForm').on('keypress', function (e) {
+        if (e.which === 13) {
+            e.preventDefault();
+            $('#filterBtn').click();
+        }
+    });
+
+    $(document).ready(function () {
+        $('#filterBtn').on('click', function () {
+            var formData = {
+                DilID: $('#DilID').val(),
+                EgitmenID: $('#EgitmenID').val(),
+                KursID: $('#KursID').val(),
+                KursiyerID: $('#KursiyerID').val(),
+                Durum: $('#Durum').val(),
+            };
+
+            console.log(formData);
+
+            $.ajax({
+                url: '@Url.Action("FilterKursiyerKursDetail", "KursiyerKursDetailEdit")',
+                type: 'POST',
+                data: formData,
+                success: function (data) {
+                    showDatas(data);
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error Status:', status);
+                    console.error('Error Details:', error);
+                    console.error('Response:', xhr.responseText);
+                    alert('Bir hata oluştu. Lütfen tekrar deneyin.');
+                }
+            });
+        });
+    });
+        $(document).ready(function () {
+            filterKursiyerKursDetail();
+
+
+
+            $(document).on('submit', 'form:not(#filterForm)', function (e) {
+                e.preventDefault();
+                var form = $(this);
+                $.ajax({
+                    url: form.attr('action'),
+                    type: form.attr('method'),
+                    data: form.serialize(),
+                    success: function (response) {
+                        if (response.success) {
+                            showSuccessMessage(response.message);
+                            filterKursiyerKursDetail();
+                        } else {
+                            alert("Başarısız");
+                        }
+                    },
+                    error: function (error) {
+                        alert("Başarısız");
+                    }
+                });
+            });
+
+            $(document).on('click', '.open-delete-modal', function () {
+                openDeleteKursiyerKursDetailModal(this);
+            });
+
+            $(document).on('click', '.open-remove-modal', function () {
+                openRemoveKursiyerKursDetailModal(this);
+            });
+
+            $(document).on('click', '.open-approve-modal', function () {
+                openApproveKursiyerKursDetailModal(this);
+            });
+
+            $(document).on('click', '.open-edit-modal', function () {
+                openEditKursiyerKursDetailModal(this);
+            });
+
+            $(document).on('click', '#yeniKursiyerKursDetailButton', function () {
+
+            openYeniKursiyerKursDetailModal();
+            });
+
+
+
+
+        });
+
+
+
+        function showSuccessMessage(message) {
+            $('#successMessage').text(message);
+            $('#successModal').modal({
+                backdrop: 'static',
+                keyboard: false
+            });
+            $('#successModal').modal('show');
+
+            setTimeout(function () {
+                $('#successModal').modal('hide');
+                $('#kursiyerKursDetailModal').modal('hide');
+            }, 1000);
+        }
+
+        function filterKursiyerKursDetail() {
+            var kursiyerKursDetailGrid = $('#kursiyerKursDetailGrid');
+
+            $.ajax({
+                url: '@Url.Action("Filter", "KursiyerKursDetailEdit")',
+                type: 'POST',
+                dataType: 'json',
+                success: function (response) {
+        console.log("Response data:", response);
+        var data = response;
+        showDatas(data);
+    },
+                error: function (error) {
+                    console.log("Hata:", error);
+                }
+            });
+        }
+
+
+
+        function egitmenFormatter(cellValue, options, rowObject) {
+            return rowObject.egitmen && rowObject.egitmen.name ? rowObject.egitmen.name : '';
+        }
+
+        function dilFormatter(cellValue, options, rowObject) {
+            return rowObject.dil && rowObject.dil.dilAdi ? rowObject.dil.dilAdi : '';
+        }
+
+        function kursFormatter(cellValue, options, rowObject) {
+            return rowObject.kurs && rowObject.kurs.name ? rowObject.kurs.name : '';
+        }
+
+        function kursiyerFormatter(cellValue, options, rowObject) {
+            return rowObject.kursiyer && rowObject.kursiyer.name ? rowObject.kursiyer.name : '';
+        }
+
+
+
+
+
+        function showDatas(data) {
+            var kursiyerKursDetailGrid = $('#kursiyerKursDetailGrid');
+
+            if (kursiyerKursDetailGrid.length) {
+                kursiyerKursDetailGrid.jqGrid('GridUnload');
+
+                kursiyerKursDetailGrid.jqGrid({
+                    data: data,
+                    colModel: [
+                        { name: 'id', label: 'ID', width: 40, align: 'center' },
+                        { name: 'kursiyer', label: 'Kursiyer', width: 200, align: 'center', formatter: kursiyerFormatter },
+                        { name: 'kurs', label: 'Kurs', width: 150, align: 'center', formatter: kursFormatter },
+                        { name: 'egitmen', label: 'Eğitmen', width: 150, align: 'center', formatter: egitmenFormatter },
+                        { name: 'dil', label: 'Dil', width: 150, align: 'center', formatter: dilFormatter },
+                        {
+        name: 'durum',
+        label: 'Durum',
+        width: 150,
+        align: 'center',
+        formatter: function (cellValue) {
+            switch (cellValue) {
+                case 1:
+                    return '<span style="color: green;">AKTİF</span>';
+                case 2:
+                    return '<span style="color: red;">KALDIRILDI</span>';
+                default:
+                    return '<span style="color: gray;">Bilinmiyor</span>';
+            }
+        }
+    },
+                        {
+                            name: 'actions',
+                            label: 'İşlemler',
+                            width: 400,
+                            align: 'center',
+                            formatter: function (cellValue, options, rowObject) {
+                                var buttons =
+                                    '<button class="btn btn-primary open-edit-modal" style="margin:0px 10px;" ' +
+                                    'data-kursiyerkursdetailid="' + rowObject.id + '" ' +
+                                    'data-kursiyerkursdetail-data=\'' + JSON.stringify({
+                                        ID: rowObject.id,
+                                        Dil: rowObject.dil || {},
+                                        Kurs: rowObject.kurs || {},
+                                        Kursiyer: rowObject.kursiyer || {},
+                                        Egitmen: rowObject.egitmen || {},
+                                        Kurslar: rowObject.kurslar || [],
+                                        Kursiyerler: rowObject.kursiyerler || [],
+                                        Diller: rowObject.diller || [],
+                                        Egitmenler: rowObject.egitmenler || []
+                                    }).replace(/'/g, "&quot;") + '\' >Düzenle</button>' +
+
+                                    '<button class="btn btn-success open-approve-modal" style="margin:0px 10px;" ' +
+                                    'data-kursiyerkursdetailid="' + rowObject.id + '" ' +
+                                    'data-kursiyerkursdetaildurum="' + rowObject.durum + '">Onayla</button>' +
+
+                                    '<button class="btn btn-warning open-remove-modal" style="margin:0px 10px;" ' +
+                                    'data-kursiyerkursdetailid="' + rowObject.id + '" ' +
+                                    'data-kursiyerkursdetaildurum="' + rowObject.durum + '">Kaldır</button>'+
+
+                                    '<button class="btn btn-warning open-delete-modal" style="margin:0px 10px;" ' +
+                                    'data-kursiyerkursdetailid="' + rowObject.id + '" ' +
+                                    'data-kursiyerkursdetaildurum="' + rowObject.durum + '">Sil</button>';
+
+                                return buttons;
+
+                            }
+                        }
+                    ],
+
+                    pager: '#kursiyerkursDetailGridPager',
+                    rowNum: 10,
+                    rowList: [10, 20, 30, 40, 50],
+                    sortname: 'id',
+                    viewrecords: true,
+                    autoheight: true,
+                    autoWidth: true,
+                    responsive: true
+                });
+            }
+        }
+
+
+        function openApproveKursiyerKursDetailModal(button) {
+            var data = button.dataset;
+
+            var formContent = `
+                            <form method="post" action="@Url.Action("ApproveKursiyerKursDetail", "KursiyerKursDetailEdit")">
+                            <div class="form-group">
+                                <label>Onaylamak istiyor musunuz ?</label>
+                            </div>
+
+                            <div class="form-group">
+                                <input type="text" id="ID" name="ID" class="form-control" value="${data.kursiyerkursdetailid}" required hidden/>
+                            </div>
+
+                            <div class="form-group">
+                            <input type="submit" value="Onayla" class="btn btn-warning w-100" />
+                            </div>
+                            </form>
+                             `;
+
+            $('#modalTitle').text('Kursu Onayla');
+            $('.modal-body').html(formContent);
+            $('#kursiyerKursDetailModal').modal('show');
+        }
+
+        function openRemoveKursiyerKursDetailModal(button) {
+            var data = button.dataset;
+
+            var formContent = `
+                        <form method="post" action="@Url.Action("RemoveKursiyerKursDetail", "KursiyerKursDetailEdit")">
+                        <div class="form-group">
+                            <label>Kaldırmak istiyor musunuz ?</label>
+                        </div>
+
+                        <div class="form-group">
+                            <input type="text" id="ID" name="ID" class="form-control" value="${data.kursiyerkursdetailid}" required hidden/>
+                        </div>
+
+                        <div class="form-group">
+                        <input type="submit" value="Kaldır" class="btn btn-warning w-100" />
+                        </div>
+                        </form>
+                         `;
+
+            $('#modalTitle').text('Kurs İçeriği Kaldır');
+            $('.modal-body').html(formContent);
+            $('#kursiyerKursDetailModal').modal('show');
+        }
+
+        function openDeleteKursiyerKursDetailModal(button) {
+            var data = button.dataset;
+
+            var formContent = `
+                        <form method="post" action="@Url.Action("DeleteKursiyerKursDetail", "KursiyerKursDetailEdit")">
+                        <div class="form-group">
+                            <label>Silmek istiyor musunuz ?</label>
+                        </div>
+
+                        <div class="form-group">
+                            <input type="text" id="ID" name="ID" class="form-control" value="${data.kursiyerkursdetailid}" required hidden/>
+                        </div>
+
+                        <div class="form-group">
+                        <input type="submit" value="Sil" class="btn btn-warning w-100" />
+                        </div>
+                        </form>
+                         `;
+
+            $('#modalTitle').text('Kurs İçeriği Sil');
+            $('.modal-body').html(formContent);
+            $('#kursiyerKursDetailModal').modal('show');
+        }
+
+
+       function openYeniKursiyerKursDetailModal() {
+        console.log("Creating yeni kursiyer kurs detail modal...");
+
+        $.ajax({
+            url: '@Url.Action("GetActiveKurslarAndActiveKursiyerler", "KursiyerKursDetailEdit")',
+            type: 'GET',
+            dataType: 'json',
+            success: function (response) {
+                console.log(response);
+                var kursOptions = response.kurslar.map(function (kurs) {
+                    return `<option value="${kurs.id}">${kurs.kursAdi} - ${kurs.egitmenAdi}</option>`;
+                }).join('');
+                var kursiyerOptions = response.kursiyerler.map(function (kursiyer) {
+                    return `<option value="${kursiyer.kullaniciAdi}">${kursiyer.kullaniciAdi}</option>`;
+                }).join('');
+
+                var formContent = `
+                    <form method="post" action="@Url.Action("AddEditKursiyerKursDetail", "KursiyerKursDetailEdit")">
+
+                        <div class="form-group">
+                            <label for="KursiyerKullaniciAdi">Kursiyer :</label>
+                            <select id="KursiyerKullaniciAdi" name="KursiyerKullaniciAdi" class="form-control" required>
+                                <option value="null">Seçiniz</option>
+                                ${kursiyerOptions}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="KursID">Kurs :</label>
+                            <select id="KursID" name="KursID" class="form-control" required>
+                                <option value="null">Seçiniz</option>
+                                ${kursOptions}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="Durum">Durum :</label>
+                            <select id="Durum" name="Durum" class="form-control" required>
+                                <option value="1">AKTİF</option>
+                                <option value="2">KALDIRILDI</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <input type="submit" value="Oluştur" class="btn btn-primary w-100" />
+                        </div>
+                    </form>
+                `;
+
+                $('#modalTitle').text('Kursiyere Kurs Ekle');
+                $('.modal-body').html(formContent);
+                $('#kursiyerKursDetailModal').modal('show');
+            },
+            error: function (error) {
+                console.log("Hata:", error);
+            }
+        });
+    }
+
+
+        function openEditKursiyerKursDetailModal(button) {
+
+            const data = JSON.parse(button.dataset.kursiyerkursdetailData);
+
+            console.log(data);
+
+            const kurslarOptions = (data.Kurslar || []).map(kurs => `
+            <option value="${kurs.id}" ${data.Kurs?.id === kurs.id ? 'selected' : ''}>${kurs.kursAdi} - ${kurs.egitmen.kullaniciAdi}</option>
+        `).join('') || '<option value="">Kurs yok</option>';
+
+            const kursiyerlerOptions = (data.Kursiyerler || []).map(kursiyer => `
+            <option value="${kursiyer.kullaniciAdi}" ${data.Kursiyer?.id === kursiyer.id ? 'selected' : ''}>${kursiyer.kullaniciAdi}</option>
+        `).join('') || '<option value="">Kursiyer yok</option>';
+
+
+
+            const formContent = `
+                    <form method="post" action="/KursiyerKursDetailEdit/AddEditKursiyerKursDetail">
+                        <div class="form-group">
+                            <input type="hidden" name="ID" value="${data.ID}" required />
+                        </div>
+                        <div class="form-group">
+                            <label for="KursID">Kurs:</label>
+                            <select id="KursID" name="KursID" class="form-control" required>
+                                <option value="">Seçiniz</option>
+                                ${kurslarOptions}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="KursiyerKullaniciAdi">Kurs:</label>
+                            <select id="KursiyerKullaniciAdi" name="KursiyerKullaniciAdi" class="form-control" required>
+                                <option value="">Seçiniz</option>
+                                ${kursiyerlerOptions}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="Durum">Durum:</label>
+                            <select id="Durum" name="Durum" class="form-control" required>
+                                <option value="1" ${data.Durum == '1' ? 'selected' : ''}>AKTİF</option>
+                                <option value="2" ${data.Durum == '2' ? 'selected' : ''}>KALDIRILDI</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <input type="submit" value="Düzenle" class="btn btn-primary w-100" />
+                        </div>
+                    </form>
+                `;
+
+            $('#modalTitle').text('Kursiyerden Kurs Kaldır');
+            $('.modal-body').html(formContent);
+            $('#kursiyerKursDetailModal').modal('show');
+        }
+
+
+</script>

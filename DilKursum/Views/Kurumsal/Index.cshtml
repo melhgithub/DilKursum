@@ -1,0 +1,24 @@
+﻿@using EntityLayer.Concrete
+@using System.Text
+@using System.Net
+@using Microsoft.AspNetCore.Html
+@model KurumsalViewModel
+@{
+    ViewData["Title"] = "Kurumsal";
+}
+
+@foreach (var kurumsal in Model.Kurumsal)
+{
+    <div class="containerr">
+        <div class="row">
+
+            <div class="col-md-12 anasayfailkyazi" style="margin-top:20px;">
+                <h2 class="HomePageTitle text-center">@kurumsal.Baslik</h2>
+                <h4 class="HomePageText word-wrap" style="word-wrap: break-word;">@Html.Raw(@kurumsal.İlkyazi)</h4>
+            </div>
+        </div>
+    </div>
+
+}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+

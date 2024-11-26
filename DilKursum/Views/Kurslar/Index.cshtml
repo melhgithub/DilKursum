@@ -1,0 +1,332 @@
+﻿@using EntityLayer.Concrete
+@model DilKursum.Models.KurslarViewModel
+@{
+    ViewData["Title"] = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+
+<link href="~/css/kurslar.css" rel="stylesheet" />
+<div class="container mt-5">
+    <h1 class="text-center my-4">Kurslar</h1>
+
+    <form method="post" action="@Url.Action("FilterKurslar", "Kurslar")">
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="KursAdi">Kurs Adı:</label>
+                    <input type="text" id="KursAdi" name="KursAdi" class="form-control" placeholder="Kurs adı girin" />
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="EgitmenKullaniciAdi">Eğitmen:</label>
+                    <input type="text" id="EgitmenKullaniciAdi" name="EgitmenKullaniciAdi" class="form-control" placeholder="Eğitmen adı girin" />
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="DilAdi">Dil:</label>
+                    <input type="text" id="DilAdi" name="DilAdi" class="form-control" placeholder="Dil adı girin" />
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="Fiyat">Fiyat:</label>
+                    <input type="text" id="Fiyat" name="Fiyat" class="form-control" placeholder="Fiyat aralığı girin" oninput="this.value = this.value.replace('.', ',');" />
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="DersSayisi">Ders Sayısı:</label>
+                    <input type="number" id="DersSayisi" name="DersSayisi" class="form-control" placeholder="Ders sayısı girin" min="0" />
+                </div>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Filtrele</button>
+            </div>
+        </div>
+    </form>
+
+    <div id="kursCards" class="row mt-4">
+        @foreach (var kurs in Model.Kurslar)
+        {
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm h-100 kurs-card">
+                    <div class="card-header text-center bg-primary text-white">
+                        <h3 class="title">
+                            @kurs.KursAdi
+                        </h3>
+                    </div>
+                    <div class="card-body d-flex flex-column">
+                        <p class="card-text text-center">@kurs.KursAciklama</p>
+
+                        <div class="mt-auto">
+                            <ul class="list-group mb-3 flex-grow-1">
+                                <li class="list-group-item">
+                                    <strong>Eğitmen:</strong> @kurs.Egitmen.KullaniciAdi
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Dil:</strong> @kurs.Dil.DilAdi
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Fiyat:</strong> @kurs.Fiyat.ToString("C")
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Ders Sayısı:</strong> @kurs.DersSayisi
+                                </li>
+                            </ul>
+
+                            <button class="btn btn-info w-100 btn-detay" data-toggle="modal" data-target="#kursDetayModal_@kurs.ID">İçerikler</button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+
+
+            <div class="modal fade" id="kursDetayModal_@kurs.ID" tabindex="-1" role="dialog" aria-labelledby="kursDetayModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-xl" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="kursDetailModalLabel">Kurs Detayları</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="container">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h5>Kurs İçerikleri</h5>
+                                        @{
+                                            int itemCount = 0;
+                                        }
+                                        <ul id="modalIcerikler" class="list-group mt-2">
+                                            @foreach (var kursdetails in Model.KursDetaylari.Where(d => d.KursID == kurs.ID))
+                                            {
+                                                if (kursdetails.Durum == (KursDetailDurum)1)
+                                                {
+                                                    if (itemCount < 2)
+                                                    {
+                                                        <li class="list-group-item clickable"
+                                                            data-video="@Url.Content($"~/uploads/{kursdetails.VideoLink}")"
+                                                            data-image="@Url.Content($"~/uploads/{kursdetails.ImageLink}")">
+                                                            Açıklama: @kursdetails.Description
+                                                        </li>
+                                                        itemCount++;
+                                                    }
+                                                    else
+                                                    {
+                                                        <li class="list-group-item">
+                                                            Açıklama: @kursdetails.Description
+                                                        </li>
+                                                    }
+                                                }
+                                            }
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h5>Kurs Bilgileri</h5>
+                                        <ul class="list-group">
+                                            @foreach (var kurss in Model.Kurslar.Where(d => d.ID == kurs.ID))
+                                            {
+                                                <li class="list-group-item"><strong>Kurs Adı:</strong> <span id="modalKursAdi">@kurss.KursAdi</span></li>
+                                                <li class="list-group-item"><strong>Açıklama:</strong> <span id="modalKursAciklama">@kurss.KursAciklama</span></li>
+                                                <li class="list-group-item"><strong>Dil:</strong> <span id="modalKursAciklama">@kurss.Dil.DilAdi</span></li>
+                                                <li class="list-group-item"><strong>Ders Sayısı:</strong> <span id="modalDersSayisi">@kurss.DersSayisi</span></li>
+                                                <li class="list-group-item"><strong>Fiyat:</strong> <span id="modalFiyat">@string.Format("{0:F2} TL", kurss.Fiyat)</span></li>
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="row mt-4">
+                                    <div class="col-md-6">
+                                        <h5>Kurs Ön İzleme</h5>
+                                        <iframe id="modalVideo" class="w-100" height="315" frameborder="0" allowfullscreen></iframe>
+                                        <img id="modalImage" class="w-100" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        @foreach (var kurss in Model.Kurslar.Where(d => d.ID == kurs.ID))
+                                        {
+                                            <h5>Eğitmen Bilgileri</h5>
+                                            <p id="modalEgitmenBilgi">@kurss.Egitmen.Isim @kurss.Egitmen.Soyisim (@kurss.Egitmen.KullaniciAdi)</p>
+                                            <p id="modalEgitmenKisaBilgi">@kurss.Egitmen.KisaBilgi</p>
+
+                                        }
+
+                                        @if (!User.IsInRole("egitmen"))
+                                        {
+                                            <button id="satinAlBtn" class="btn btn-success w-100" data-kurs-id="@kurs.ID">Satın Al</button>
+                                        }
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Kapat</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        }
+    </div>
+
+</div>
+
+
+
+<script>
+    $(document).on('click', '.btn-detay', function () {
+        var modalId = $(this).data('target');
+        console.log("Butona tıklandı:", $(this).data('target'), "Modal:",modalId);
+        $(modalId).modal('show');
+    });
+
+    $(document).ready(function() {
+        $(document).on('click', '.clickable', function () {
+            console.log("İçerik değiştiriliyor.");
+            var videoLink = $(this).data('video');
+            var imageLink = $(this).data('image');
+            var description = $(this).text().replace('Açıklama ', '');
+            console.log(videoLink, imageLink);
+
+            $('#modalVideo').hide();
+            $('#modalImage').hide();
+
+            if (videoLink) {
+                $('#modalVideo').attr('src', videoLink).show();
+            }
+
+            if (imageLink) {
+                $('#modalImage').attr('src', imageLink).show();
+            }
+
+            $('#modalVideo').closest('.col-md-6').find('h5').text(description);
+        });
+    });
+
+
+
+
+     $(document).on('click', '#satinAlBtn', function () {
+         var kursId = $(this).data('kurs-id');
+         $.ajax({
+             url: '@Url.Action("SatinAl", "Kurslar")',
+             type: 'POST',
+             data: { kursId: kursId },
+             success: function (response) {
+                  if (response.success) {
+                      var modal = `<div id="authModal" class="modal fade" tabindex="-1" role="dialog">
+                          <div class="modal-dialog" role="document">
+                              <div class="modal-content">
+                                  <div class="modal-body">
+                                      <p>${response.message}</p>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>`;
+                      $('body').append(modal);
+                      $('#authModal').modal('show');
+                      setTimeout(function () {
+                          $('#authModal').modal('hide');
+                          $('#authModal').remove();
+                      }, 1500);
+                 } else {
+                     var modal = `<div id="authModal" class="modal fade" tabindex="-1" role="dialog">
+                         <div class="modal-dialog" role="document">
+                             <div class="modal-content">
+                                 <div class="modal-body">
+                                     <p>${response.message}</p>
+                                 </div>
+                             </div>
+                         </div>
+                     </div>`;
+                     $('body').append(modal);
+                     $('#authModal').modal('show');
+                     setTimeout(function () {
+                         $('#authModal').modal('hide');
+                         $('#authModal').remove();
+                     }, 1500);
+                 }
+             },
+             error: function () {
+                 alert('Satın alma işlemi sırasında bir hata oluştu.');
+             }
+         });
+     });
+
+
+     $('form').on('submit', function (e) {
+         e.preventDefault();
+         var formData = {
+             KursAdi: $('#KursAdi').val(),
+             EgitmenKullaniciAdi: $('#EgitmenKullaniciAdi').val(),
+             DilAdi: $('#DilAdi').val(),
+             Fiyat: $('#Fiyat').val(),
+             DersSayisi: $('#DersSayisi').val()
+         };
+
+
+         $.ajax({
+             url: '@Url.Action("FilterKurslar", "Kurslar")',
+             type: 'POST',
+             data: formData,
+             success: function (data) {
+                 $('#kursCards').empty();
+                 $.each(data, function (index, kurs) {
+                      var formattedPrice = new Intl.NumberFormat('tr-TR', {
+                      style: 'currency',
+                      currency: 'TRY'
+                  }).format(kurs.fiyat);
+                      var card = `<div class="col-md-6 mb-4">
+                  <div class="card shadow-sm h-100 kurs-card">
+                      <div class="card-header text-center bg-primary text-white">
+                          <h3 class="title">
+                             ${kurs.kursAdi}
+                          </h3>
+                      </div>
+                      <div class="card-body d-flex flex-column">
+                          <p class="card-text text-center">${kurs.kursAciklama}</p>
+
+                          <div class="mt-auto">
+                              <ul class="list-group mb-3 flex-grow-1">
+                                  <li class="list-group-item">
+                                      <strong>Eğitmen:</strong> ${kurs.kullaniciAdi}
+                                  </li>
+                                  <li class="list-group-item">
+                                      <strong>Dil:</strong> ${kurs.dilAdi}
+                                  </li>
+                                  <li class="list-group-item">
+                                       <strong>Fiyat:</strong> ${formattedPrice}
+                                  </li>
+                                  <li class="list-group-item">
+                                       <strong>Ders Sayısı:</strong> ${kurs.dersSayisi}
+                                  </li>
+                              </ul>
+
+                              <button class="btn btn-info w-100 btn-detay" data-toggle="modal" data-target="#kursDetayModal_${kurs.id}">İçerikler</button>
+                          </div>
+
+                      </div>
+                  </div>
+              </div>`;
+                     $('#kursCards').append(card);
+                 });
+             },
+             error: function () {
+                 console.error("Ajax hatası oluştu.");
+                 alert('Bir hata oluştu. Lütfen tekrar deneyin.');
+             }
+         });
+     });
+
+</script>
